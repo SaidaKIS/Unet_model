@@ -7,15 +7,20 @@ import sys
 import torch
 from torch import nn
 from datetime import datetime
+from torchsummary import summary
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 root = 'data/Masks_S_v2/'
+l = 3000
+size_boxes = 96
+channels = 1
 N_EPOCHS = 30
 BACH_SIZE = 16
 loss = 'FocalLoss'
 save_model = True
 bilinear = False
+model_summary = False
 lr = 1e-3
 
 if loss == 'CrossEntropy':
@@ -25,7 +30,7 @@ if loss == 'FocalLoss':
 if loss == 'mIoU':
     criterion = losses.mIoULoss(n_classes=5).to(device)
 
-data=dataset.segDataset(root)
+data=dataset.segDataset(root, l=l, s=size_boxes)
 
 print('Number of data : '+ str(len(data)))
 
@@ -39,7 +44,11 @@ print(f'Test : {N_TEST}')
 train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=BACH_SIZE, shuffle=True, num_workers=2)
 test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=BACH_SIZE, shuffle=False, num_workers=1)
 
-model = model.UNet(n_channels=1, n_classes=5, bilinear=False).to(device)
+n_class = len(data.bin_classes)
+
+model = model.UNet(n_channels=channels, n_classes=n_class, bilinear=bilinear).to(device)
+if model_summary == True:
+    summary(model, (channels, size_boxes, size_boxes))
 
 optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 #Ajust learing rate
@@ -123,7 +132,7 @@ for epoch in range(N_EPOCHS):
         lr_scheduler.step()
         print(f"lowering learning rate to {optimizer.param_groups[0]['lr']}")
         scheduler_counter = 0
-        
+
 if save_model == True:
     dt = datetime.now()
     np.save('model_params/Train_params_{}.npy'.format(dt), save_losses)
