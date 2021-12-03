@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import random
 import torchvision.transforms as Ttorch
 import torch
@@ -129,5 +128,5 @@ class segDataset(torch.utils.data.Dataset):
     return len(self.images)
 
   def choose(self): 
-    idx = randint(len(self))
+    idx = random.randint(len(self))
     return self.images[idx], self.masks[idx] 
