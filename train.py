@@ -6,6 +6,7 @@ import numpy as np
 import sys
 import torch
 from torch import nn
+from datetime import datetime
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -122,5 +123,7 @@ for epoch in range(N_EPOCHS):
         lr_scheduler.step()
         print(f"lowering learning rate to {optimizer.param_groups[0]['lr']}")
         scheduler_counter = 0
-#if save_model == True:
-    #np.save('Train_params_epochs_{}_Loss_{}_.npy', save_losses)
+        
+if save_model == True:
+    dt = datetime.now()
+    np.save('model_params/Train_params_{}.npy'.format(dt), save_losses)
