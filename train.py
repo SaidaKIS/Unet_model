@@ -1,3 +1,4 @@
+from typing import OrderedDict
 import dataset
 import losses
 import model
@@ -135,4 +136,16 @@ for epoch in range(N_EPOCHS):
 
 if save_model == True:
     dt = datetime.now()
-    np.save('model_params/Train_params_{}.npy'.format(dt), save_losses)
+    dict = OrderedDict()
+    dict['root'] = root
+    dict['dataset_lenght'] = l
+    dict['size_boxes'] = size_boxes
+    dict['channels'] = channels
+    dict['Number_epochs'] = N_EPOCHS
+    dict['Bach_size'] = BACH_SIZE
+    dict['Loss'] = loss
+    dict['bilinear'] = bilinear
+    dict['Optimizer_lr'] = lr
+    with open('model_params/Train_params_{}.npy'.format(dt), 'wb') as f:
+        np.save(f, dict)
+        np.save(f, save_losses)
