@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 import model
 
 EPS = 1e-10
@@ -20,7 +21,6 @@ def _fast_hist(true, pred, num_classes):
         minlength=num_classes ** 2,
     ).reshape(num_classes, num_classes).float()
     return hist
-
 
 def overall_pixel_accuracy(hist):
     """Computes the total pixel accuracy.
@@ -127,7 +127,7 @@ def blockshaped(arr, nrows, ncols):
                .swapaxes(1,2)
                .reshape(-1, nrows, ncols))
     
-def model_eval(f, model, device):
+def model_eval(f, m, device):
     file = np.load(f)
     map_f = file['smap'].astype(np.float32)
     mask_map_f = file['cmask_map'].astype(np.float32)
@@ -136,7 +136,7 @@ def model_eval(f, model, device):
     data = torch.cat((torch.unsqueeze(torch.Tensor(dx),1),torch.unsqueeze(torch.Tensor(dy),1)), 1)
     
     model_unet = model.UNet(n_channels=1, n_classes=5, bilinear=False).to(device)
-    model_unet.load_state_dict(model)
+    model_unet.load_state_dict(m)
     model_unet.eval()
 
     x=torch.unsqueeze(data[:,0,:,:],1)
@@ -161,7 +161,6 @@ def model_eval(f, model, device):
 
 def metrics_plots(l, save=False):
   plt.rcParams.update({
-    "text.usetex": True,
     "font.family": "sans-serif",
     "font.sans-serif": ["Helvetica"]})
   plt.rcParams.update({'font.size': 18})
@@ -170,13 +169,47 @@ def metrics_plots(l, save=False):
   plt.figure(figsize=(12,8))
   plt.plot(plot_losses[:,0], plot_losses[:,1], '--b')
   plt.plot(plot_losses[:,0], plot_losses[:,2], '--r')
-  plt.plot(plot_losses[:,0], plot_losses[:,3], color='g')
-  plt.plot(plot_losses[:,0], plot_losses[:,4], color='m')
-  plt.plot(plot_losses[:,0], plot_losses[:,5], color='c')
-  plt.plot(plot_losses[:,0], plot_losses[:,6], color='y')
+  plt.plot(plot_losses[:,0], plot_losses[:,5], color='g')
+  plt.plot(plot_losses[:,0], plot_losses[:,6], color='m')
+  plt.plot(plot_losses[:,0], plot_losses[:,7], color='c')
+  plt.plot(plot_losses[:,0], plot_losses[:,8], color='y')
   plt.xlabel('Epochs',fontsize=20)
   plt.ylabel('Loss/accuracy',fontsize=20)
   plt.grid()
-  plt.legend(['Loss Training', 'Loss Validation', 'OP accuracy', 'PC accuracy', 'J_index', 'Dice_index' ]) # using a named size
+  plt.legend(['Loss Training', 
+              'Training accuracy', 
+              'Validation global accuracy', 
+              'Validation PerClass accuracy', 
+              'Validation Jaccard Index', 
+              'Validation Dice Index' ]) # using a named size
+  plt.show()
   if save == True:
     plt.savefig('Plot.pdf')
+
+def comparative_maps(raw_map, gt_mask, p_mask, bin_classes, save=False):
+    plt.rcParams.update({
+    "font.family": "sans-serif",
+    "font.sans-serif": ["Helvetica"]})
+    plt.rcParams.update({'font.size': 18})
+
+    fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(18,7), sharex=True, sharey=True)
+    im1=ax[0].imshow(raw_map, origin='lower', cmap='gray')
+    im2=ax[1].imshow(gt_mask, origin='lower', cmap = plt.get_cmap('PiYG', 5))
+    im3=ax[2].imshow(p_mask, origin='lower', cmap = plt.get_cmap('PiYG', 5))
+    values = np.unique(gt_mask.ravel())
+    colors = [im2.cmap(im2.norm(value)) for value in values]
+
+    patches = [mpatches.Patch(color=colors[i], 
+    label="Class: {l}".format(l=bin_classes[i])) for i in range(len(bin_classes))]
+    lgd = plt.legend(handles=patches, bbox_to_anchor=(-0.7, -0.35), loc=8, borderaxespad=0. , ncol=3)
+    corres=np.round(np.count_nonzero(gt_mask == p_mask)*100/(768*768), 2)
+    ax[0].set_title('Original map')
+    ax[1].set_title('Ground True map')
+    ax[2].set_title('Model Predicted map')
+    if save == True:
+        fig.savefig('Comparative_plot.pdf', bbox_extra_artists=(lgd,), bbox_inches='tight')
+
+
+
+
+
