@@ -127,12 +127,12 @@ def blockshaped(arr, nrows, ncols):
                .swapaxes(1,2)
                .reshape(-1, nrows, ncols))
     
-def model_eval(f, m, device):
+def model_eval(f, m, device, size):
     file = np.load(f)
     map_f = file['smap'].astype(np.float32)
     mask_map_f = file['cmask_map'].astype(np.float32)
-    dx = blockshaped(map_f, 96, 96)
-    dy = blockshaped(mask_map_f, 96, 96)
+    dx = blockshaped(map_f, size, size)
+    dy = blockshaped(mask_map_f, size, size)
     data = torch.cat((torch.unsqueeze(torch.Tensor(dx),1),torch.unsqueeze(torch.Tensor(dy),1)), 1)
     
     model_unet = model.UNet(n_channels=1, n_classes=5, bilinear=False).to(device)
@@ -151,9 +151,13 @@ def model_eval(f, m, device):
     a = acc(y,pred_mask).numpy()
 
     partial=[]
-    for i in range(8):
-      partial.append(np.concatenate([x for x in pred_mask_np[i*8:8*i+8]], axis=1))
-    pred_total_mask=np.concatenate(partial, axis=0)
+    if map_f.shape[0] % size == 0:
+        slides = int(map_f.shape[0]/size)
+        for i in range(slides):
+            partial.append(np.concatenate([x for x in pred_mask_np[i*slides:slides*i+slides]], axis=1))
+        pred_total_mask=np.concatenate(partial, axis=0)
+    else:
+        raise AttributeError('Full map can not be divided')
 
     losses = [a, val_overall_pa, val_per_class_pa, val_jaccard_index, val_dice_index]
 
@@ -204,10 +208,10 @@ def comparative_maps(raw_map, gt_mask, p_mask, bin_classes, save=False):
     lgd = plt.legend(handles=patches, bbox_to_anchor=(-0.7, -0.35), loc=8, borderaxespad=0. , ncol=3)
     corres=np.round(np.count_nonzero(gt_mask == p_mask)*100/(768*768), 2)
     ax[0].set_title('Original map')
-    ax[1].set_title('Ground True map')
-    ax[2].set_title('Model Predicted map')
+    ax[1].set_title('Ground-Truth map')
+    ax[2].set_title('Model Predicted map - Score: '+str(corres))
     if save == True:
-        fig.savefig('Comparative_plot.pdf', bbox_extra_artists=(lgd,), bbox_inches='tight')
+        fig.savefig('Cplot.pdf', bbox_extra_artists=(lgd,), bbox_inches='tight')
 
 
 

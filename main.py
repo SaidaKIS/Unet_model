@@ -13,10 +13,12 @@ if __name__ == '__main__':
     bin_classes = ['Intergranular lane', 'Granules with dots', 'Granules with lanes',
                    'Complex-shape granules', 'Normal-shape granules']
 
-    model_test1 = torch.load('model_params/unet_epoch_35_0.49074_CE_TC.pt', map_location=torch.device(device))
-    f = 'data/Masks_S_v2/Mask_data_Frame_0.npz'
-    smap_f0, cmask_map_f0, total0, l=utils.model_eval(f, model_test1, device)
+    model_test1 = torch.load('../New_results/unet_epoch_45_0.51774_IoU_128x128.pt', map_location=torch.device(device))
+    f = 'data/Masks_C/Mask_data_Frame_0.npz'
+    #f = 'data/Masks_C/Mask_data_Frame_112.npz'
+    smap_f0, cmask_map_f0, total0, ls=utils.model_eval(f, model_test1, device, 128)
+    print(ls)
 
-    l = np.load('model_params/Training_params_FL_TC_40_epocs.npy')
-    utils.metrics_plots(l)
-    utils.comparative_maps(smap_f0, cmask_map_f0, total0, bin_classes)   
+    l = np.load('../New_results/Training_params_IoU_128x128_50_epocs.npy')
+    #utils.metrics_plots(l)
+    utils.comparative_maps(smap_f0, cmask_map_f0, total0, bin_classes, save=True)   
