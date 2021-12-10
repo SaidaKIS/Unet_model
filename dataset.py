@@ -5,8 +5,10 @@ import torch
 from glob import glob
 import cv2
 from torch import Tensor
-
+from scipy.special import softmax
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+#def weighted_random_choice():
 
 def get_param(degree, size):
     """
@@ -39,18 +41,17 @@ class RandomRotation_crop(torch.nn.Module):
        self.degree = [float(d) for d in degrees]
        self.size = int(size)
 
-  def forward(self, img):
+  def forward(self, img, pmap):
       """Rotate the image by a random angle.
          If the image is torch Tensor, it is expected
          to have [..., H, W] shape, where ... means an arbitrary number of leading dimensions.
 
-    Args:
-        degrees (sequence or number): Range of degrees to select from.
+        Args:
+            degrees (sequence or number): Range of degrees to select from.
             If degrees is a number instead of sequence like (min, max), the range of degrees
             will be (-degrees, +degrees).
-        size (single value): size of the squared croped box
-    """
-      """
+            size (single value): size of the squared croped box
+
       Transformation that selects a randomly rotated region in the image within a specific 
       range of degrees and a fixed squared size.
       """
@@ -63,6 +64,8 @@ class RandomRotation_crop(torch.nn.Module):
 
       extent_1 = [float(extent), float(d_1-extent)]
       extent_2 = [float(extent), float(d_2-extent)]
+
+      cut_pmap = pmap[extent_1[0]: extent_1[1], extent_2[0]: extent_2[1]]
 
       center_1 = float(torch.empty(1).uniform_(extent_1[0], extent_1[1]).item())
       center_2 = float(torch.empty(1).uniform_(extent_2[0], extent_2[1]).item())
@@ -82,14 +85,17 @@ class Secuential_trasn(torch.nn.Module):
        super().__init__()
        self.transforms = transforms
 
-    def __call__(self, img):
+    def __call__(self, img, pmap):
       t_list=[img]
-      for t in self.transforms:
-        t_list.append(t(t_list[-1]))
+      for t in range(len(self.transforms)):
+        if t == 1:
+          t_list.append(self.transforms[t](t_list[-1], pmap))
+        else:
+          t_list.append(self.transforms[t](t_list[-1]))
       return t_list[-1]
 
 class segDataset(torch.utils.data.Dataset):
-  def __init__(self, root, l=1000, s=96):
+  def __init__(self, root, l=1000, s=128):
     super(segDataset, self).__init__()
     self.root = root
     self.size = s
@@ -117,7 +123,14 @@ class segDataset(torch.utils.data.Dataset):
     file = np.load(file)
     smap = file['smap'].astype(np.float32)
     mask_smap = file['cmask_map'].astype(np.float32)
-    img_t = self.transform_serie(np.array([smap, mask_smap]).transpose())
+
+    #Full probability maps calculation
+    weight_maps = np.zeros_like(mask_smap).astype(np.float32)
+    weight_maps[(mask_smap == 0.0) | (mask_smap == 4.0)] = 2
+    weight_maps[(mask_smap == 1.0) | (mask_smap == 2.0) | (mask_smap == 3.0)] = 8
+    pmap = softmax(weight_maps)
+    
+    img_t = self.transform_serie(np.array([smap, mask_smap]).transpose(), pmap)
     self.image = img_t[0].unsqueeze(0)
     self.mask = img_t[1].type(torch.int64)
     return self.image, self.mask
