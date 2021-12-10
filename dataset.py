@@ -89,11 +89,10 @@ class Secuential_trasn(torch.nn.Module):
       return t_list[-1]
 
 class segDataset(torch.utils.data.Dataset):
-  def __init__(self, root, l=3000, s=96):
+  def __init__(self, root, s=96):
     super(segDataset, self).__init__()
     self.root = root
     self.size = s
-    self.l = l
     self.classes = {'Intergranular lane' : 0,
                     'Granules with dots' : 1,
                     'Granules with lanes' : 2,
@@ -109,20 +108,19 @@ class segDataset(torch.utils.data.Dataset):
                                             Ttorch.RandomVerticalFlip(p=0.5)
                                             ])
     
-    file_list = sorted(glob(self.root+'*.npz'))
-    self.images = []
-    self.masks = []
-    for f in file_list:
-      file = np.load(f)
-      self.map_f = file['smap'].astype(np.float32)
-      self.mask_map_f = file['cmask_map'].astype(np.float32)
-      for i in range(int(self.l/len(file_list))+1):
-        img_t = self.transform_serie(np.array([self.map_f, self.mask_map_f]).transpose())
-        self.images.append(img_t[0].unsqueeze(0))
-        self.masks.append(img_t[1].type(torch.int64))
-  
+    self.file_list = sorted(glob(self.root+'*.npz'))
+      
   def __getitem__(self, idx):
-    return self.images[idx], self.masks[idx] 
+    
+    file = random.choice(self.file_list)
+    file = np.load(file)
+    smap = file['smap'].astype(np.float32)
+    mask_smap = file['cmask_map'].astype(np.float32)
+    img_t = self.transform_serie(np.array([smap, mask_smap]).transpose())
+    self.image = img_t[0].unsqueeze(0)
+    self.mask = img_t[1].type(torch.int64)
+
+    return self.image, self.mask
 
   def __len__(self):
     return len(self.images)
