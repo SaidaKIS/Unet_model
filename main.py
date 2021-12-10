@@ -9,20 +9,20 @@ import numpy as np
 if __name__ == '__main__':
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(device)
-
+    
     bin_classes = ['Intergranular lane', 'Granules with dots', 'Granules with lanes',
                    'Complex-shape granules', 'Normal-shape granules']
 
     #Parameters
-    root = 'data/Masks_C/'
-    l = 100
-    size_box = 96
+    root = 'data/Masks_C/' # Raw full IMaX maps (6 for training and 1 for validate)
+    l = 30000 # Submaps dataset size 
+    size_box = 128 # size of each submap
     channels = 1
-    N_EPOCHS = 2
-    BACH_SIZE = 4
+    N_EPOCHS = 40 
+    BACH_SIZE = 32  
     loss = 'mIoU' # 'CrossEntropy', 'FocalLoss', 'mIoU'
     save_model = True
-    bilinear = False
+    bilinear = False # Unet upsampling mechanisim is Traspose convolution
     model_summary = False
     lr = 1e-3
 
@@ -43,4 +43,4 @@ if __name__ == '__main__':
     #    training_info = np.load(f, allow_pickle=True)
     #    metrics = np.load(f, allow_pickle=True)
 
-    utils.metrics_plots(metrics)
+    #utils.metrics_plots(metrics)
