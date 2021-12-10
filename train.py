@@ -12,49 +12,30 @@ from torchsummary import summary
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-root = 'data/Masks_S_v2/'
-l = 3000
-size_boxes = 96
-channels = 1
-N_EPOCHS = 30
-BACH_SIZE = 16
-loss = 'FocalLoss'
-save_model = True
-bilinear = False
-model_summary = False
-lr = 1e-3
-
 def run(root, l, size_boxes, channels, N_EPOCHS, BACH_SIZE, loss, lr =1e-3, 
         save_model=False, bilinear=False, model_summary=False):
 
     if loss == 'CrossEntropy':
         criterion = nn.CrossEntropyLoss().to(device)
     if loss == 'FocalLoss':
-        criterion = losses.FocalLoss(gamma=3/4).to(device)
+        criterion = losses.FocalLoss(gamma=1).to(device)
     if loss == 'mIoU':
         criterion = losses.mIoULoss(n_classes=5).to(device)
-    
-    data=dataset.segDataset(root, l=l, s=size_boxes)
-    
-    print('Number of data : '+ str(len(data)))
 
-    test_num = int(0.1 * len(data))
+    test_num = int(0.1 * l)
+    data_train=dataset.segDataset(root+'Train/', l=l-test_num, s=size_boxes)
+    data_test=dataset.segDataset(root+'Validate/', l=test_num, s=size_boxes)
     
-    train_dataset, test_dataset = torch.utils.data.random_split(data, [len(data)-test_num, test_num], generator=torch.Generator().manual_seed(101))
-    N_DATA, N_TEST = len(train_dataset), len(test_dataset)
-    print(f'Data : {N_DATA}')
-    print(f'Test : {N_TEST}')
+    train_dataloader = torch.utils.data.DataLoader(data_train, batch_size=BACH_SIZE, shuffle=True, num_workers=2)
+    test_dataloader = torch.utils.data.DataLoader(data_test, batch_size=BACH_SIZE, shuffle=False, num_workers=1)
     
-    train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=BACH_SIZE, shuffle=True, num_workers=2)
-    test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=BACH_SIZE, shuffle=False, num_workers=1)
-    
-    n_class = len(data.bin_classes)
+    n_class = len(data_train.bin_classes)
     
     model_unet = model.UNet(n_channels=channels, n_classes=n_class, bilinear=bilinear).to(device)
     if model_summary == True:
         summary(model_unet, (channels, size_boxes, size_boxes))
     
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    optimizer = torch.optim.Adam(model_unet.parameters(), lr=lr)
     #Ajust learing rate
     #Decays the learning rate of each parameter group by gamma every step_size epochs.
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.5)

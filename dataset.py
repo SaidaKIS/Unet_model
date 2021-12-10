@@ -89,10 +89,11 @@ class Secuential_trasn(torch.nn.Module):
       return t_list[-1]
 
 class segDataset(torch.utils.data.Dataset):
-  def __init__(self, root, s=96):
+  def __init__(self, root, l=1000, s=96):
     super(segDataset, self).__init__()
     self.root = root
     self.size = s
+    self.l = l
     self.classes = {'Intergranular lane' : 0,
                     'Granules with dots' : 1,
                     'Granules with lanes' : 2,
@@ -119,12 +120,11 @@ class segDataset(torch.utils.data.Dataset):
     img_t = self.transform_serie(np.array([smap, mask_smap]).transpose())
     self.image = img_t[0].unsqueeze(0)
     self.mask = img_t[1].type(torch.int64)
-
     return self.image, self.mask
-
+  
   def __len__(self):
-    return len(self.images)
+        return self.l
 
-  def choose(self): 
-    idx = random.randint(len(self))
-    return self.images[idx], self.masks[idx] 
+  #def choose(self): 
+  #  idx = random.randint(len(self))
+  #  return self.images[idx], self.masks[idx] 
