@@ -5,11 +5,13 @@ import train
 import utils
 import torch
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 
 if __name__ == '__main__':
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(device)
-    
+
     bin_classes = ['Intergranular lane', 'Granules with dots', 'Granules with lanes',
                    'Complex-shape granules', 'Normal-shape granules']
 
@@ -18,7 +20,7 @@ if __name__ == '__main__':
     l = 30000 # Submaps dataset size 
     size_box = 128 # size of each submap
     channels = 1
-    N_EPOCHS = 40 
+    N_EPOCHS = 200 
     BACH_SIZE = 32  
     loss = 'mIoU' # 'CrossEntropy', 'FocalLoss', 'mIoU'
     save_model = True

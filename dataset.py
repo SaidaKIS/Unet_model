@@ -62,20 +62,19 @@ class RandomRotation_crop(torch.nn.Module):
       else:
         raise TypeError("Img should be a Tensor")
 
-      extent_1 = [float(extent), float(d_1-extent)]
-      extent_2 = [float(extent), float(d_2-extent)]
-
-      cut_pmap = pmap[extent_1[0]: extent_1[1], extent_2[0]: extent_2[1]]
-
-      center_1 = float(torch.empty(1).uniform_(extent_1[0], extent_1[1]).item())
-      center_2 = float(torch.empty(1).uniform_(extent_2[0], extent_2[1]).item())
-
-      center = (int(center_1), int(center_2))
+      ext_1 = [float(extent), float(d_1-extent)]
+      ext_2 = [float(extent), float(d_2-extent)]
+      
+      cut_pmap = softmax(pmap[int(ext_1[0]): int(ext_1[1]), int(ext_2[0]): int(ext_2[1])])
+      ind = np.array(list(np.ndindex(cut_pmap.shape)))
+      pos = np.random.choice(np.arange(len(cut_pmap.flatten())), 1, p=cut_pmap.flatten())
+      
+      c = (int(ind[pos[0],1])+int(ext_1[0]), int(ind[pos[0],0])+int(ext_2[0]))
 
       img_raw=img.cpu().detach().numpy()
 
-      cr_image_0 = subimage(img_raw[0], center, angle, self.size, self.size)
-      cr_image_1 = subimage(img_raw[1], center, angle, self.size, self.size)
+      cr_image_0 = subimage(img_raw[0], c, angle, self.size, self.size)
+      cr_image_1 = subimage(img_raw[1], c, angle, self.size, self.size)
 
       return torch.Tensor(np.array([cr_image_0,cr_image_1]), device='cpu')
 
@@ -89,7 +88,8 @@ class Secuential_trasn(torch.nn.Module):
       t_list=[img]
       for t in range(len(self.transforms)):
         if t == 1:
-          t_list.append(self.transforms[t](t_list[-1], pmap))
+          rotation = self.transforms[t](t_list[-1], pmap)
+          t_list.append(rotation)
         else:
           t_list.append(self.transforms[t](t_list[-1]))
       return t_list[-1]
@@ -119,25 +119,24 @@ class segDataset(torch.utils.data.Dataset):
       
   def __getitem__(self, idx):
     
-    file = random.choice(self.file_list)
-    file = np.load(file)
+    file_name = random.choice(self.file_list)
+    file = np.load(file_name)
     smap = file['smap'].astype(np.float32)
     mask_smap = file['cmask_map'].astype(np.float32)
 
     #Full probability maps calculation
     weight_maps = np.zeros_like(mask_smap).astype(np.float32)
-    weight_maps[(mask_smap == 0.0) | (mask_smap == 4.0)] = 2
-    weight_maps[(mask_smap == 1.0) | (mask_smap == 2.0) | (mask_smap == 3.0)] = 8
-    pmap = softmax(weight_maps)
+    weight_maps[(mask_smap == 0.0)] = 1
+    weight_maps[(mask_smap == 4.0)] = 3
+    weight_maps[(mask_smap == 1.0)] = 6
+    weight_maps[(mask_smap == 2.0)] = 6
+    weight_maps[(mask_smap == 3.0)] = 5
     
-    img_t = self.transform_serie(np.array([smap, mask_smap]).transpose(), pmap)
+    img_t = self.transform_serie(np.array([smap, mask_smap]).transpose(), weight_maps)
+
     self.image = img_t[0].unsqueeze(0)
     self.mask = img_t[1].type(torch.int64)
     return self.image, self.mask
   
   def __len__(self):
         return self.l
-
-  #def choose(self): 
-  #  idx = random.randint(len(self))
-  #  return self.images[idx], self.masks[idx] 
