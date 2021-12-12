@@ -213,7 +213,20 @@ def comparative_maps(raw_map, gt_mask, p_mask, bin_classes, save=False):
     if save == True:
         fig.savefig('Cplot.pdf', bbox_extra_artists=(lgd,), bbox_inches='tight')
 
-
+def test_centers(mask, cx, cy):
+    bin_classes = ['Intergranular lane', 'Granules with dots', 'Granules with lanes',
+                   'Complex-shape granules', 'Normal-shape granules']
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10,10), sharex=True, sharey=True)
+    im=ax.imshow(mask, origin='lower', cmap = plt.get_cmap('PiYG', 5))
+    ax.scatter(cx, cy, color = 'blue')
+    values = np.unique(mask.ravel())
+    colors = [im.cmap(im.norm(value)) for value in values]
+    ax.set_xticklabels([])
+    ax.set_yticklabels([])
+    patches = [mpatches.Patch(color=colors[i], 
+    label="Class: {l}".format(l=bin_classes[i])) for i in range(len(bin_classes))]
+    lgd = plt.legend(handles=patches, bbox_to_anchor=(0.5, -0.2), loc=8, borderaxespad=0.)
+    fig.savefig('Test_centers.pdf', bbox_extra_artists=(lgd,), bbox_inches='tight')
 
 
 
