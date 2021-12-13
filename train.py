@@ -26,7 +26,7 @@ def run(root, l, size_boxes, channels, N_EPOCHS, BACH_SIZE, loss, lr =1e-3,
     data_train=dataset.segDataset(root+'Train/', l=l-test_num, s=size_boxes)
     data_test=dataset.segDataset(root+'Validate/', l=test_num, s=size_boxes)
     
-    train_dataloader = torch.utils.data.DataLoader(data_train, batch_size=BACH_SIZE, shuffle=True, num_workers=2)
+    train_dataloader = torch.utils.data.DataLoader(data_train, batch_size=BACH_SIZE, shuffle=True, num_workers=1)
     test_dataloader = torch.utils.data.DataLoader(data_test, batch_size=BACH_SIZE, shuffle=False, num_workers=1)
     
     n_class = len(data_train.bin_classes)
