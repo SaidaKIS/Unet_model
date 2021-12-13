@@ -75,8 +75,40 @@ class RandomRotation_crop(torch.nn.Module):
 
       cr_image_0 = subimage(img_raw[0], c, angle, self.size, self.size)
       cr_image_1 = subimage(img_raw[1], c, angle, self.size, self.size)
+    
+      return torch.Tensor(np.array([cr_image_0,cr_image_1]), device='cpu')
+
+class SRS_crop(torch.nn.Module):
+  def __init__(self, size):
+       super().__init__()
+       self.size = int(size)
+
+  def forward(self, img, pmap):
+      if isinstance(img, Tensor):
+        d_1=img.size(dim=1)
+        d_2=img.size(dim=2)
+      else:
+        raise TypeError("Img should be a Tensor")
+
+      ext_1 = [float(self.size), float(d_1-self.size)]
+      ext_2 = [float(self.size), float(d_2-self.size)]
+      
+      cut_pmap = softmax(pmap[int(ext_1[0]): int(ext_1[1]), int(ext_2[0]): int(ext_2[1])])
+      ind = np.array(list(np.ndindex(cut_pmap.shape)))
+      pos = np.random.choice(np.arange(len(cut_pmap.flatten())), 1, p=cut_pmap.flatten())
+      
+      c = (int(ind[pos[0],1])+int(ext_1[0]), int(ind[pos[0],0])+int(ext_2[0]))
+
+      img_raw=img.cpu().detach().numpy()
+
+      x = int(c[0] - self.size/2)
+      y = int(c[1] - self.size/2)
+
+      cr_image_0 = img_raw[0,y:y+self.size, x:x+self.size]
+      cr_image_1 = img_raw[1,y:y+self.size, x:x+self.size]
 
       return torch.Tensor(np.array([cr_image_0,cr_image_1]), device='cpu')
+
 
 class Secuential_trasn(torch.nn.Module):
     """Generates a secuential transformation"""
@@ -109,8 +141,14 @@ class segDataset(torch.utils.data.Dataset):
     self.bin_classes = ['Intergranular lane', 'Granules with dots', 'Granules with lanes',
                         'Complex-shape granules', 'Normal-shape granules']
 
+    #self.transform_serie = Secuential_trasn([Ttorch.ToTensor(),
+    #                                        RandomRotation_crop((0, 180), self.size),
+    #                                        Ttorch.RandomHorizontalFlip(p=0.5),
+    #                                        Ttorch.RandomVerticalFlip(p=0.5)
+    #                                        ])
+
     self.transform_serie = Secuential_trasn([Ttorch.ToTensor(),
-                                            RandomRotation_crop((0, 180), self.size),
+                                            SRS_crop(self.size),
                                             Ttorch.RandomHorizontalFlip(p=0.5),
                                             Ttorch.RandomVerticalFlip(p=0.5)
                                             ])
