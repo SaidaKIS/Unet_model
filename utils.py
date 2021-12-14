@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import model
+from glob import glob
 
 EPS = 1e-10
 
@@ -227,6 +228,22 @@ def test_centers(mask, cx, cy):
     label="Class: {l}".format(l=bin_classes[i])) for i in range(len(bin_classes))]
     lgd = plt.legend(handles=patches, bbox_to_anchor=(0.5, -0.2), loc=8, borderaxespad=0.)
     fig.savefig('Test_centers.pdf', bbox_extra_artists=(lgd,), bbox_inches='tight')
+
+def class_prop(root):
+    file_list = sorted(glob(root+'*.npz'))
+    mask_smap = []
+    for f in file_list:
+        file = np.load(f)
+        mask_smap.append(file['cmask_map'].astype(np.float32))
+
+    mask_smap=np.array(mask_smap)
+    values, counts = np.unique(mask_smap, return_counts=True)
+    for v in values:
+        print('Class {} - proportion {}'.format(v, counts[int(v)]/mask_smap.size))
+
+        
+
+
 
 
 
