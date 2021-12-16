@@ -12,14 +12,16 @@ from torchsummary import summary
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-def run(root, l, size_boxes, channels, N_EPOCHS, BACH_SIZE, loss, lr =1e-3, 
+def run(root, l, size_boxes, channels, N_EPOCHS, BACH_SIZE, loss_str, lr =1e-3, 
         save_model=False, bilinear=False, model_summary=False):
 
-    if loss == 'CrossEntropy':
-        criterion = nn.CrossEntropyLoss().to(device)
-    if loss == 'FocalLoss':
-        criterion = losses.FocalLoss(gamma=1).to(device)
-    if loss == 'mIoU':
+    CE_weights = torch.Tensor([1.0,6.0,6.0,5.0,3.0]).to(device)
+
+    if loss_str == 'CrossEntropy':
+        criterion = nn.CrossEntropyLoss(weight=CE_weights).to(device)
+    if loss_str == 'FocalLoss':
+        criterion = losses.FocalLoss(gamma=1, alpha=CE_weights).to(device)
+    if loss_str == 'mIoU':
         criterion = losses.mIoULoss(n_classes=5).to(device)
 
     test_num = int(0.1 * l)
@@ -127,7 +129,7 @@ def run(root, l, size_boxes, channels, N_EPOCHS, BACH_SIZE, loss, lr =1e-3,
         dict['channels'] = channels
         dict['Number_epochs'] = N_EPOCHS
         dict['Bach_size'] = BACH_SIZE
-        dict['Loss'] = loss
+        dict['Loss'] = loss_str
         dict['bilinear'] = bilinear
         dict['Optimizer_lr'] = lr
         with open('model_params/Train_params_{}.npy'.format(dt), 'wb') as f:
