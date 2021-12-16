@@ -7,6 +7,17 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import io
+import pickle
+
+#change this in general 
+#/Users/smdiazcas/miniconda/envs/pyUnet/lib/python3.9/site-packages/torch/storage.py
+#class Unpickler(pickle.Unpickler):
+#    def find_class(self, module, name):
+#        if module == 'torch.storage' and name == '_load_from_bytes':
+#            return lambda b: torch.load(io.BytesIO(b), map_location='cpu')
+#        else: return super().find_class(module, name)
+
 
 if __name__ == '__main__':
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -29,20 +40,24 @@ if __name__ == '__main__':
     lr = 1e-3
 
     #Train a model
-    train.run(root, l, size_box, channels, N_EPOCHS, BACH_SIZE, loss, lr = lr, 
-        save_model=True, bilinear=False, model_summary=False)
+    #train.run(root, l, size_box, channels, N_EPOCHS, BACH_SIZE, loss, lr = lr, 
+    #    save_model=True, bilinear=False, model_summary=False)
 
     #Test model
     # Generate a prediction 
-    #model_test1 = torch.load('model_params/*.pt', map_location=torch.device(device))
-    #file = 'data/Masks_C/Validate/Mask_data_Frame_76.npz'
-    #smap_f0, cmask_map_f0, total0, ls=utils.model_eval(file, model_test1, device, size_box)
+    model_test1 = torch.load('../New_results/unet_epoch_19_0.60844.pt', map_location=torch.device(device))
+    file = 'data/Masks_C/Validate/Mask_data_Frame_76.npz'
+    #smap_f0, cmask_map_f0, total, total0, ls=utils.model_eval(file, model_test1, device, size_box)
     #print(ls)
-    #utils.comparative_maps(smap_f0, cmask_map_f0, total0, bin_classes, save=True)   
+    #utils.probability_maps(smap_f0, total0, bin_classes)
+    #utils.comparative_maps(smap_f0, cmask_map_f0, total, bin_classes, save=True) 
+    imax_save = '/dat/quest/QUEST_WP1/SUNRISE/2009_6_10/2009y_06m_10d_save/contmaps.sav'
+    utils.test_Imax(imax_save, model_test1, bin_classes)
 
     # Training information
-    #with open ('model_params/Train_params_2021-12-10 12:58:43.135519.npy', 'rb') as f:
+    #with open ('../New_results/Train_params_2021-12-14_20_31_02.370241.npy', 'rb') as f:
     #    training_info = np.load(f, allow_pickle=True)
     #    metrics = np.load(f, allow_pickle=True)
 
+    #print(training_info)
     #utils.metrics_plots(metrics)
