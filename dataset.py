@@ -113,21 +113,18 @@ class SRS_crop(torch.nn.Module):
        self.size = int(size)
 
   def forward(self, img, pmap, ind):
-      start = time.time()
       counter = np.arange(len(pmap))
       pos = np.random.choice(counter, 1, p=pmap)      
-      c = (int(ind[pos[0],1])+int(self.size/2), int(ind[pos[0],0])+int(self.size/2))
+      c = (int(ind[pos[0],0])+int(self.size/2), int(ind[pos[0],1])+int(self.size/2))
       img_raw=img.cpu().detach().numpy()
 
       x = int(c[0] - self.size/2)
       y = int(c[1] - self.size/2)
 
-      cr_image_0 = img_raw[0,y:y+self.size, x:x+self.size]
-      cr_image_1 = img_raw[1,y:y+self.size, x:x+self.size]
-      end = time.time()
-      print('1-> ', end-start)
+      cr_image_0 = img_raw[0,y:y+self.size, x:x+self.size] # raw image
+      cr_image_1 = img_raw[1,y:y+self.size, x:x+self.size] # raw mask
 
-      return torch.Tensor(np.array([cr_image_0,cr_image_1]), device='cpu')
+      return torch.Tensor(np.array([cr_image_0,cr_image_1]), device='cpu'), c
 
 class Secuential_trasn(torch.nn.Module):
     """Generates a secuential transformation"""
@@ -139,12 +136,12 @@ class Secuential_trasn(torch.nn.Module):
       t_list=[img]      
       for t in range(len(self.transforms)):
         if t == 1:
-          rotation = self.transforms[t](t_list[-1], pmap, ind)
+          rotation, c = self.transforms[t](t_list[-1], pmap, ind)
           t_list.append(rotation)
         else:
           t_list.append(self.transforms[t](t_list[-1]))
 
-      return t_list[-1]
+      return t_list[-1], c
 
 class segDataset(torch.utils.data.Dataset):
   def __init__(self, root, l=1000, s=128):
@@ -181,12 +178,12 @@ class segDataset(torch.utils.data.Dataset):
       self.mask_smap.append(file['cmask_map'].astype(np.float32))
 
       pmap = file['cmask_map']
-      weight_maps = np.zeros_like(pmap[self.size:, :-self.size]).astype(np.float32)
-      weight_maps[pmap[self.size:, :-self.size] == 0.0] = 1
-      weight_maps[pmap[self.size:, :-self.size] == 4.0] = 3
-      weight_maps[pmap[self.size:, :-self.size] == 1.0] = 6
-      weight_maps[pmap[self.size:, :-self.size] == 2.0] = 6
-      weight_maps[pmap[self.size:, :-self.size] == 3.0] = 5
+      weight_maps = np.zeros_like(pmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)]).astype(np.float32)
+      weight_maps[pmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 0.0] = 1
+      weight_maps[pmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 4.0] = 1
+      weight_maps[pmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 1.0] = 7
+      weight_maps[pmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 2.0] = 7
+      weight_maps[pmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 3.0] = 8
 
       self.weight_maps.append(softmax(weight_maps).flatten())
       self.index_list.append(np.array(list(np.ndindex(weight_maps.shape))))
@@ -198,13 +195,13 @@ class segDataset(torch.utils.data.Dataset):
     mask_smap = self.mask_smap[ind]
 
     #Full probability maps calculation
-    weight_maps = self.weight_maps[ind]
+    weight_map = self.weight_maps[ind]
     index_l = self.index_list[ind]
-    img_t = self.transform_serie(np.array([smap, mask_smap]).transpose(), weight_maps, index_l)
+    img_t, c = self.transform_serie(np.array([smap, mask_smap]).transpose(), weight_map, index_l)
 
     self.image = img_t[0].unsqueeze(0)
     self.mask = img_t[1].type(torch.int64)
-    return self.image, self.mask
+    return self.image, self.mask, ind, c
   
   def __len__(self):
         return self.l
