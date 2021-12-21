@@ -289,7 +289,7 @@ def test_centers(mask, cx, cy):
                    'Complex-shape granules', 'Normal-shape granules']
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(10,10), sharex=True, sharey=True)
     im=ax.imshow(mask, origin='lower', cmap = plt.get_cmap('PiYG', 5))
-    ax.scatter(cx, cy, color = 'blue')
+    ax.scatter(cy, cx, color = 'blue')
     values = np.unique(mask.ravel())
     colors = [im.cmap(im.norm(value)) for value in values]
     ax.set_xticklabels([])
