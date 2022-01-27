@@ -33,7 +33,7 @@ if __name__ == '__main__':
     l = 30000 # Submaps dataset size 
     size_box = 128 # size of each submap
     channels = 1
-    N_EPOCHS = 1 
+    N_EPOCHS = 200 
     BACH_SIZE = 32  
     loss = 'mIoU' # 'CrossEntropy', 'FocalLoss', 'mIoU'
     save_model = True
