@@ -161,8 +161,8 @@ class segDataset(torch.utils.data.Dataset):
     self.transform_serie = Secuential_trasn([Ttorch.ToTensor(),
                                             SRS_crop(self.size),
                                             RotationTransform(angles=[0, 90, 180, 270]),
-                                            Ttorch.RandomHorizontalFlip(p=0.5),
-                                            Ttorch.RandomVerticalFlip(p=0.5)
+                                            Ttorch.RandomHorizontalFlip(),
+                                            Ttorch.RandomVerticalFlip()
                                             ])
     
     self.file_list = sorted(glob(self.root+'*.npz'))
