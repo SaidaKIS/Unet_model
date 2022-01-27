@@ -35,7 +35,7 @@ if __name__ == '__main__':
     channels = 1
     N_EPOCHS = 200 
     BACH_SIZE = 32  
-    loss = 'mIoU' # 'CrossEntropy', 'FocalLoss', 'mIoU'
+    loss = 'FocalLoss' # 'CrossEntropy', 'FocalLoss', 'mIoU'
     save_model = True
     bilinear = False # Unet upsampling mechanisim is Traspose convolution
     model_summary = False
