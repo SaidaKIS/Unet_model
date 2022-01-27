@@ -150,13 +150,13 @@ class segDataset(torch.utils.data.Dataset):
     self.size = s
     self.l = l
     self.classes = {'Intergranular lane' : 0,
-                    'Granules with dots' : 1,
-                    'Granules with lanes' : 2,
-                    'Complex-shape granules' : 3, 
-                    'Normal-shape granules' : 4}
+                    'Normal-shape granules': 1,
+                    'Granules with dots' : 2,
+                    'Granules with lanes' : 3,
+                    'Complex-shape granules' : 4}
 
-    self.bin_classes = ['Intergranular lane', 'Granules with dots', 'Granules with lanes',
-                        'Complex-shape granules', 'Normal-shape granules']
+    self.bin_classes = ['Intergranular lane', 'Normal-shape granules', 'Granules with dots', 'Granules with lanes',
+                        'Complex-shape granules']
 
     self.transform_serie = Secuential_trasn([Ttorch.ToTensor(),
                                             SRS_crop(self.size),
@@ -181,9 +181,9 @@ class segDataset(torch.utils.data.Dataset):
       weight_maps = np.zeros_like(pmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)]).astype(np.float32)
       weight_maps[pmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 0.0] = 1
       weight_maps[pmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 4.0] = 1
-      weight_maps[pmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 1.0] = 7
-      weight_maps[pmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 2.0] = 7
-      weight_maps[pmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 3.0] = 8
+      weight_maps[pmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 1.0] = 10
+      weight_maps[pmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 2.0] = 10
+      weight_maps[pmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 3.0] = 10
 
       self.weight_maps.append(softmax(weight_maps).flatten())
       self.index_list.append(np.array(list(np.ndindex(weight_maps.shape))))
