@@ -33,13 +33,14 @@ if __name__ == '__main__':
     l = 30000 # Submaps dataset size 
     size_box = 128 # size of each submap
     channels = 1
-    N_EPOCHS = 200 
+    N_EPOCHS = 100 
     BACH_SIZE = 32  
-    loss = 'FocalLoss' # 'CrossEntropy', 'FocalLoss', 'mIoU'
+    loss = 'mIoU' # 'CrossEntropy', 'FocalLoss', 'mIoU'
     save_model = True
     bilinear = False # Unet upsampling mechanisim is Traspose convolution
     model_summary = False
     lr = 1e-3
+
 
     #prop=pd.DataFrame(columns=[0, 1, 2, 3, 4], index=np.arange(0,2000))
     #data=dataset.segDataset(root,l=2000, s=size_box)
@@ -79,9 +80,11 @@ if __name__ == '__main__':
     #utils.test_Imax(imax_save, model_test1, bin_classes)
 
     # Training information
-    #with open ('../New_results/Train_params_2021-12-14_20_31_02.370241.npy', 'rb') as f:
+    #with open ('../New_results/Train_parmas_E200_FocalLoss_2022_01_28_09_56_17.npy', 'rb') as f:
     #    training_info = np.load(f, allow_pickle=True)
     #    metrics = np.load(f, allow_pickle=True)
-
+    #    h_train_metrics = np.load(f, allow_pickle=True)
+    #    h_val_metrics = np.load(f, allow_pickle=True)
+#
     #print(training_info)
     #utils.metrics_plots(metrics)

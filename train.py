@@ -15,12 +15,12 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 def run(root, l, size_boxes, channels, N_EPOCHS, BACH_SIZE, loss_str, lr =1e-3, 
         save_model=False, bilinear=False, model_summary=False):
 
-    CE_weights = torch.Tensor([1.0,10.0,10.0,10.0,1.0]).to(device)
+    CE_weights = torch.Tensor([1.0,10.0,100.0,10.0,1.0]).to(device)
 
     if loss_str == 'CrossEntropy':
         criterion = nn.CrossEntropyLoss(weight=CE_weights).to(device)
     if loss_str == 'FocalLoss':
-        criterion = losses.FocalLoss(gamma=1, alpha=CE_weights).to(device)
+        criterion = losses.FocalLoss(gamma=0.5, alpha=CE_weights).to(device)
     if loss_str == 'mIoU':
         criterion = losses.mIoULoss(n_classes=5).to(device)
 
@@ -40,10 +40,13 @@ def run(root, l, size_boxes, channels, N_EPOCHS, BACH_SIZE, loss_str, lr =1e-3,
     optimizer = torch.optim.Adam(model_unet.parameters(), lr=lr)
     #Ajust learing rate
     #Decays the learning rate of each parameter group by gamma every step_size epochs.
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.5)
+    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.7)
     min_loss = torch.tensor(float('inf'))
     
     save_losses = []
+    #Histograms
+    save_h_train_losses = []
+    save_h_val_losses = []
     scheduler_counter = 0
     
     for epoch in range(N_EPOCHS):
@@ -83,6 +86,7 @@ def run(root, l, size_boxes, channels, N_EPOCHS, BACH_SIZE, loss_str, lr =1e-3,
         val_per_class_pa_list = []
         val_jaccard_index_list = []
         val_dice_index_list = []
+
         for batch_i, (x, y) in enumerate(test_dataloader):
             with torch.no_grad():    
                 pred_mask = model_unet(x.to(device))  
@@ -102,6 +106,10 @@ def run(root, l, size_boxes, channels, N_EPOCHS, BACH_SIZE, loss_str, lr =1e-3,
                                                                                                         np.mean(acc_list), 
                                                                                                         np.mean(val_loss_list),
                                                                                                         np.mean(val_acc_list)))
+        if epoch % 20 == 0:
+            save_h_train_losses.append([loss_list, acc_list])
+            save_h_val_losses.append([val_loss_list, val_acc_list])
+
         save_losses.append([epoch, np.mean(loss_list), np.mean(acc_list), np.mean(val_loss_list),  np.mean(val_acc_list),
                             np.mean(val_overall_pa_list), np.mean(val_per_class_pa_list),
                             np.mean(val_jaccard_index_list), np.mean(val_dice_index_list)])
@@ -135,3 +143,5 @@ def run(root, l, size_boxes, channels, N_EPOCHS, BACH_SIZE, loss_str, lr =1e-3,
         with open('model_params/Train_params_{}.npy'.format(dt), 'wb') as f:
             np.save(f, dict)
             np.save(f, save_losses)
+            np.save(f, save_h_train_losses)
+            np.save(f, save_h_val_losses)

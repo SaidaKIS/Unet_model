@@ -182,7 +182,7 @@ class segDataset(torch.utils.data.Dataset):
       weight_maps[pmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 0.0] = 1
       weight_maps[pmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 4.0] = 1
       weight_maps[pmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 1.0] = 10
-      weight_maps[pmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 2.0] = 10
+      weight_maps[pmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 2.0] = 100
       weight_maps[pmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 3.0] = 10
 
       self.weight_maps.append(softmax(weight_maps).flatten())
@@ -201,7 +201,7 @@ class segDataset(torch.utils.data.Dataset):
 
     self.image = img_t[0].unsqueeze(0)
     self.mask = img_t[1].type(torch.int64)
-    #return self.image, self.mask, ind, c  for test central points
+    #return self.image, self.mask, ind, c  #for test central points
     return self.image, self.mask
   
   def __len__(self):
