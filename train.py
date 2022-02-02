@@ -20,7 +20,7 @@ def run(root, l, size_boxes, channels, N_EPOCHS, BACH_SIZE, loss_str, lr =1e-3,
     if loss_str == 'CrossEntropy':
         criterion = nn.CrossEntropyLoss(weight=CE_weights).to(device)
     if loss_str == 'FocalLoss':
-        criterion = losses.FocalLoss(gamma=0.5, alpha=CE_weights).to(device)
+        criterion = losses.FocalLoss(gamma=1, alpha=CE_weights).to(device)
     if loss_str == 'mIoU':
         criterion = losses.mIoULoss(n_classes=5).to(device)
 

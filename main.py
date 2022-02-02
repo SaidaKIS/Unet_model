@@ -13,7 +13,6 @@ import pickle
 import pandas as pd
 from glob import glob
 
-
 #change this in general 
 #/Users/smdiazcas/miniconda/envs/pyUnet/lib/python3.9/site-packages/torch/storage.py
 #class Unpickler(pickle.Unpickler):
@@ -33,7 +32,7 @@ if __name__ == '__main__':
                    'Complex-shape granules']
 
     #Parameters
-    root = 'data/Masks_S_v3/Train/' # Raw full IMaX maps (6 for training and 1 for validate)
+    root = 'data/Masks_S_v3/' # Raw full IMaX maps (6 for training and 1 for validate)
     l = 30000 # Submaps dataset size 
     size_box = 128 # size of each submap
     channels = 1
@@ -44,7 +43,7 @@ if __name__ == '__main__':
     bilinear = False # Unet upsampling mechanisim is Traspose convolution
     model_summary = False
     lr = 1e-3
-
+#
     #prop=pd.DataFrame(columns=[0, 1, 2, 3, 4], index=np.arange(0,2000))
     #data=dataset.segDataset(root,l=2000, s=size_box)
     #centre = []
@@ -73,25 +72,24 @@ if __name__ == '__main__':
     #mask = file['cmask_map'].astype(np.float32)
     #c = np.array(centre)
     #utils.test_centers(mask, c[:,0], c[:,1])
-
-
-    #Train a model
-    #train.run(root, l, size_box, channels, N_EPOCHS, BACH_SIZE, loss, lr = lr, 
-    #    save_model=True, bilinear=False, model_summary=False)
+#
+    ##Train a model
+    train.run(root, l, size_box, channels, N_EPOCHS, BACH_SIZE, loss, lr = lr, 
+        save_model=True, bilinear=False, model_summary=False)
 
     #Test model
     # Generate a prediction 
-    model_test1 = torch.load('../New_results/NewGT_Jan2022/unet_epoch_6_0.46250_IoU.pt', map_location=torch.device(device))
-    file = 'data/Masks_S_v3/Validate/Mask_data_Frame_103.npz'
+    #model_test1 = torch.load('../New_results/NewGT_Jan2022/unet_epoch_6_0.46250_IoU.pt', map_location=torch.device(device))
+    #file = 'data/Masks_S_v3/Validate/Mask_data_Frame_103.npz'
 
     #smap_f0, cmask_map_f0, total, total0, ls=utils.model_eval(file, model_test1, device, size_box)
-    smap_f0, cmask_map_f0, total, total0, ls=utils.model_eval_full(file, model_test1, device)
-    print(ls)
-
-    utils.probability_maps(smap_f0[3], total[3], bin_classes)
-    utils.comparative_maps(smap_f0[3], cmask_map_f0[3], total0[3], bin_classes, save=True) 
-    imax_save = '/Users/smdiazcas/Documents/Phd/Research/NN_granulation/contmaps.sav'
-    utils.test_Imax(imax_save, model_test1, bin_classes)
+    #smap_f0, cmask_map_f0, total, total0, ls=utils.model_eval_full(file, model_test1, device)
+    #print(ls)
+#
+    #utils.probability_maps(smap_f0[3], total[3], bin_classes)
+    #utils.comparative_maps(smap_f0[3], cmask_map_f0[3], total0[3], bin_classes, save=True) 
+    #imax_save = '/Users/smdiazcas/Documents/Phd/Research/NN_granulation/contmaps.sav'
+    #utils.test_Imax(imax_save, model_test1, bin_classes)
 
 
     # Training information
