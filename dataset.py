@@ -1,3 +1,4 @@
+from statistics import mode
 import numpy as np
 import random
 import torchvision.transforms as Ttorch
@@ -6,7 +7,11 @@ from glob import glob
 import cv2
 from torch import Tensor
 from scipy.special import softmax
+from scipy.ndimage import rotate
 import time
+import matplotlib.pyplot as plt
+import PIL
+
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def get_param(degree, size):
@@ -146,6 +151,7 @@ class Secuential_trasn(torch.nn.Module):
 class segDataset(torch.utils.data.Dataset):
   def __init__(self, root, l=1000, s=128):
     super(segDataset, self).__init__()
+    start = time.time()
     self.root = root
     self.size = s
     self.l = l
@@ -161,6 +167,7 @@ class segDataset(torch.utils.data.Dataset):
     self.transform_serie = Secuential_trasn([Ttorch.ToTensor(),
                                             SRS_crop(self.size),
                                             RotationTransform(angles=[0, 90, 180, 270]),
+                                            Ttorch.RandomPerspective(0.3,p=0.5, interpolation=Ttorch.InterpolationMode.NEAREST),
                                             Ttorch.RandomHorizontalFlip(p=0.5),
                                             Ttorch.RandomVerticalFlip(p=0.5)
                                             ])
@@ -174,23 +181,47 @@ class segDataset(torch.utils.data.Dataset):
     self.index_list = []
     for f in self.file_list:
       file = np.load(f)
-      self.smap.append(file['smap'].astype(np.float32))
-      self.mask_smap.append(file['cmask_map'].astype(np.float32))
+      psmap = file['smap'].astype(np.float32)
+      pmsmap = file['cmask_map'].astype(np.float32)
 
-      pmap = file['cmask_map']
-      weight_maps = np.zeros_like(pmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)]).astype(np.float32)
-      weight_maps[pmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 0.0] = 1
-      weight_maps[pmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 4.0] = 1
-      weight_maps[pmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 1.0] = 10
-      weight_maps[pmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 2.0] = 100
-      weight_maps[pmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 3.0] = 10
+      pad_value = int(((np.sqrt(2*(psmap.shape[0]**2))-psmap.shape[0]))/2)
 
-      self.weight_maps.append(softmax(weight_maps).flatten())
-      self.index_list.append(np.array(list(np.ndindex(weight_maps.shape))))
+      #Padding for rotation
+      pad_psmap = np.pad(psmap, ((pad_value,pad_value),(pad_value,pad_value)), mode='reflect')
+      pad_pmsmap = np.pad(pmsmap, ((pad_value,pad_value),(pad_value,pad_value)), mode='reflect')
 
+      self.rot_angle = np.arange(0,90,10)
+      for a in self.rot_angle:
+        vis1 = PIL.Image.fromarray(pad_psmap)
+        #p_map1 = np.asarray(vis1.rotate(a))
+        p_map1 = rotate(vis1,a)
+        x01 = int(abs(p_map1.shape[0]/2) - (psmap.shape[0]/2))
+        x02 = int(abs(p_map1.shape[0]/2) + (psmap.shape[0]/2))
+        p_map1 = p_map1[x01:x02,x01:x02]
+
+        vis2 = PIL.Image.fromarray(pad_pmsmap)
+        p_map2 = np.asarray(vis2.rotate(a))
+        x11 = int(abs(p_map2.shape[0]/2) - (pmsmap.shape[0]/2))
+        x12 = int(abs(p_map2.shape[0]/2) + (pmsmap.shape[0]/2))
+        p_map_mask = p_map2[x11:x12,x11:x12]
+
+        self.smap.append(p_map1)
+        self.mask_smap.append(p_map_mask)
+
+        weight_maps = np.zeros_like(p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)]).astype(np.float32)
+        weight_maps[p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 0] = 1
+        weight_maps[p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 4] = 1
+        weight_maps[p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 1] = 10
+        weight_maps[p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 2] = 100
+        weight_maps[p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 3] = 10
+
+        self.weight_maps.append(softmax(weight_maps.flatten()))
+        self.index_list.append(np.array(list(np.ndindex(weight_maps.shape))))
+    print("Done!")
+        
   def __getitem__(self, idx):
     
-    ind = np.random.randint(low=0, high=len(self.file_list))
+    ind = np.random.randint(low=0, high=len(self.smap))
     smap = self.smap[ind]
     mask_smap = self.mask_smap[ind]
 
@@ -201,8 +232,8 @@ class segDataset(torch.utils.data.Dataset):
 
     self.image = img_t[0].unsqueeze(0)
     self.mask = img_t[1].type(torch.int64)
-    #return self.image, self.mask, ind, c  #for test central points
-    return self.image, self.mask
+    return self.image, self.mask, ind, c  #for test central points
+    #return self.image, self.mask
   
   def __len__(self):
         return self.l

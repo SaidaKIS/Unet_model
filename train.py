@@ -25,7 +25,9 @@ def run(root, l, size_boxes, channels, N_EPOCHS, BACH_SIZE, loss_str, lr =1e-3,
         criterion = losses.mIoULoss(n_classes=5).to(device)
 
     test_num = int(0.1 * l)
+    print("Training set")
     data_train=dataset.segDataset(root+'Train/', l=l-test_num, s=size_boxes)
+    print("Validating set")
     data_test=dataset.segDataset(root+'Validate/', l=test_num, s=size_boxes)
     
     train_dataloader = torch.utils.data.DataLoader(data_train, batch_size=BACH_SIZE, shuffle=True, num_workers=1)

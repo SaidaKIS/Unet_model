@@ -181,6 +181,53 @@ def model_eval(f, m, device, size):
     losses = [a, val_overall_pa, val_per_class_pa, val_jaccard_index, val_dice_index]
 
     return map_f, mask_map_f, np.array(pred_total_class_mask), np.array(prop_perclass), losses
+    
+def model_eval_full(f, m, device, size=512):
+    file = np.load(f)
+    map_f = file['smap'].astype(np.float32)
+    mask_map_f = file['cmask_map'].astype(np.float32)
+
+    map_f_s = len(map_f) 
+    dx=[]
+    dy=[]
+    if map_f_s > size:
+        dx.append(map_f[:size,:size])
+        dx.append(map_f[-size:,:size])
+        dx.append(map_f[:size,-size:])
+        dx.append(map_f[-size:,-size:])
+
+        dy.append(mask_map_f[:size,:size])
+        dy.append(mask_map_f[-size:,:size])
+        dy.append(mask_map_f[:size,-size:])
+        dy.append(mask_map_f[-size:,-size:])
+    else:
+        raise ValueError('Map size lower that requested - change the requested/input size keyword')
+
+    dx=np.array(dx)
+    dy=np.array(dy)
+
+    data = torch.cat((torch.unsqueeze(torch.Tensor(dx),1),torch.unsqueeze(torch.Tensor(dy),1)), 1)
+    
+    model_unet = model.UNet(n_channels=1, n_classes=5, bilinear=False).to(device)
+    model_unet.load_state_dict(m)
+    model_unet.eval()
+
+    x=torch.unsqueeze(data[:,0,:,:],1)
+    y=torch.unsqueeze(data[:,1,:,:],1).to(torch.int32)
+    
+    with torch.no_grad():    
+         pred_mask = model_unet(x.to(device))
+
+    pred_mask_np = pred_mask.cpu().detach().numpy()  
+    pred_mask_class = torch.argmax(pred_mask, axis=1)
+    pred_mask_class_np=pred_mask_class.cpu().detach().numpy()
+
+    val_overall_pa, val_per_class_pa, val_jaccard_index, val_dice_index = eval_metrics_sem(y.to(device), pred_mask_class.to(device), 5, device)
+    a = acc(y,pred_mask).numpy()
+
+    losses = [a, val_overall_pa, val_per_class_pa, val_jaccard_index, val_dice_index]
+
+    return dx, dy, pred_mask_np, pred_mask_class_np, losses
 
 def metrics_plots(l, save=False):
   plt.rcParams.update({
@@ -191,20 +238,18 @@ def metrics_plots(l, save=False):
   plot_losses = np.array(l)
   plt.figure(figsize=(12,8))
   plt.plot(plot_losses[:,0], plot_losses[:,1], '--b')
-  plt.plot(plot_losses[:,0], plot_losses[:,2], '--r')
-  plt.plot(plot_losses[:,0], plot_losses[:,5], color='g')
-  plt.plot(plot_losses[:,0], plot_losses[:,6], color='m')
-  plt.plot(plot_losses[:,0], plot_losses[:,7], color='c')
-  plt.plot(plot_losses[:,0], plot_losses[:,8], color='y')
+  plt.plot(plot_losses[:,0], plot_losses[:,2], '.-b')
+  plt.plot(plot_losses[:,0], plot_losses[:,3], '--r')
+  plt.plot(plot_losses[:,0], plot_losses[:,5], '.-r')
+  plt.plot(plot_losses[:,0], plot_losses[:,8], color='g')
   plt.xlabel('Epochs',fontsize=20)
   plt.ylabel('Loss/accuracy',fontsize=20)
   plt.grid()
-  plt.legend(['Loss Training', 
+  plt.legend(['Training Loss', 
               'Training accuracy', 
+              'Validation Loss',
               'Validation global accuracy', 
-              'Validation PerClass accuracy', 
-              'Validation Jaccard Index', 
-              'Validation Dice Index' ]) # using a named size
+              'Validation PerClass/Dice accuracy']) # using a named size
   plt.show()
   if save == True:
     plt.savefig('Plot.pdf')
@@ -311,7 +356,7 @@ def class_prop(root):
     for v in values:
         print('Class {} - proportion {}'.format(v, counts[int(v)]/mask_smap.size))
 
-def test_Imax(save_file, m, bin_classes, s=128, frame_num=4, save=True):
+def test_Imax(save_file, m, bin_classes, s=512, frame_num=4, save=True):
     fs = Granules_labelling.IMaX_maps(save_file)
     size = fs.shape[0]
     #random_ind = [random.randint(20, size-20) for x in range(frame_num)]
@@ -324,25 +369,26 @@ def test_Imax(save_file, m, bin_classes, s=128, frame_num=4, save=True):
 
     for ind in random_ind:
         fs.select_map(ind)
-        map_f = fs.smap[13:-13,13:-13]
-        dx = blockshaped(map_f, s, s)
+        map_f = fs.smap
+        map_f_s = len(map_f) 
+        dx=[]
+        if map_f_s > size:
+            x1 = int(abs(map_f_s/2) - (s/2))
+            x2 = int(abs(map_f_s/2) + (s/2))
+            dx.append(map_f[x1:x2,x1:x2])
+        else:
+            raise ValueError('Map size lower that requested - change the requested/input size keyword')
+
+        dx=np.array(dx)
         partial = torch.unsqueeze(torch.Tensor(dx),1)
         x=torch.unsqueeze(partial[:,0,:,:],1)
   
         with torch.no_grad():    
             pred_mask = model_unet(x.to('cpu'))          
         pred = torch.argmax(pred_mask, axis=1)
+        pred_np=pred.cpu().detach().numpy()
 
-        partial2=[]
-        if map_f.shape[0] % s == 0:
-            slides = int(map_f.shape[0]/s)
-            for i in range(slides):
-                partial2.append(np.concatenate([x for x in pred[i*slides:slides*i+slides]], axis=1))
-                pred_total=np.concatenate(partial2, axis=0)
-        else:
-            raise AttributeError('Full map can not be divided')
-
-        data.append([map_f, pred_total])
+        data.append([dx[0], pred_np[0]])
 
     plt.rcParams.update({
     "font.family": "sans-serif",
@@ -369,8 +415,6 @@ def test_Imax(save_file, m, bin_classes, s=128, frame_num=4, save=True):
     
     if save == True:
         fig.savefig('ImaXplot.pdf', bbox_extra_artists=(lgd,), bbox_inches='tight')
-
-    
     
 
     
