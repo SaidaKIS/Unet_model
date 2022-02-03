@@ -190,7 +190,7 @@ class segDataset(torch.utils.data.Dataset):
       pad_psmap = np.pad(psmap, ((pad_value,pad_value),(pad_value,pad_value)), mode='reflect')
       pad_pmsmap = np.pad(pmsmap, ((pad_value,pad_value),(pad_value,pad_value)), mode='reflect')
 
-      self.rot_angle = np.arange(0,90,10)
+      self.rot_angle = np.arange(0,90,5)
       for a in self.rot_angle:
         vis1 = PIL.Image.fromarray(pad_psmap)
         #p_map1 = np.asarray(vis1.rotate(a))
@@ -211,9 +211,9 @@ class segDataset(torch.utils.data.Dataset):
         weight_maps = np.zeros_like(p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)]).astype(np.float32)
         weight_maps[p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 0] = 1
         weight_maps[p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 4] = 1
-        weight_maps[p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 1] = 10
-        weight_maps[p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 2] = 100
-        weight_maps[p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 3] = 10
+        weight_maps[p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 1] = 50
+        weight_maps[p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 2] = 50
+        weight_maps[p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 3] = 50
 
         self.weight_maps.append(softmax(weight_maps.flatten()))
         self.index_list.append(np.array(list(np.ndindex(weight_maps.shape))))

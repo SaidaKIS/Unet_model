@@ -15,7 +15,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 def run(root, l, size_boxes, channels, N_EPOCHS, BACH_SIZE, loss_str, lr =1e-3, 
         save_model=False, bilinear=False, model_summary=False):
 
-    CE_weights = torch.Tensor([1.0,10.0,100.0,10.0,1.0]).to(device)
+    CE_weights = torch.Tensor([1.0,50.0,50.0,50.0,1.0]).to(device)
 
     if loss_str == 'CrossEntropy':
         criterion = nn.CrossEntropyLoss(weight=CE_weights).to(device)
