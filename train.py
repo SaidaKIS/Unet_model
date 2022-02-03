@@ -12,10 +12,10 @@ from torchsummary import summary
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-def run(root, l, size_boxes, channels, N_EPOCHS, BACH_SIZE, loss_str, lr =1e-3, 
+def run(root, l, size_boxes, channels, N_EPOCHS, BACH_SIZE, loss_str, lr = 1e-3, 
         save_model=False, bilinear=False, model_summary=False):
 
-    CE_weights = torch.Tensor([1.0,50.0,50.0,50.0,1.0]).to(device)
+    CE_weights = torch.Tensor([1.0,100.0,100.0,100.0,1.0]).to(device)
 
     if loss_str == 'CrossEntropy':
         criterion = nn.CrossEntropyLoss(weight=CE_weights).to(device)
@@ -42,7 +42,7 @@ def run(root, l, size_boxes, channels, N_EPOCHS, BACH_SIZE, loss_str, lr =1e-3,
     optimizer = torch.optim.Adam(model_unet.parameters(), lr=lr)
     #Ajust learing rate
     #Decays the learning rate of each parameter group by gamma every step_size epochs.
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.7)
+    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.9)
     min_loss = torch.tensor(float('inf'))
     
     save_losses = []

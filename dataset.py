@@ -211,9 +211,9 @@ class segDataset(torch.utils.data.Dataset):
         weight_maps = np.zeros_like(p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)]).astype(np.float32)
         weight_maps[p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 0] = 1
         weight_maps[p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 4] = 1
-        weight_maps[p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 1] = 50
-        weight_maps[p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 2] = 50
-        weight_maps[p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 3] = 50
+        weight_maps[p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 1] = 100
+        weight_maps[p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 2] = 100
+        weight_maps[p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 3] = 100
 
         self.weight_maps.append(softmax(weight_maps.flatten()))
         self.index_list.append(np.array(list(np.ndindex(weight_maps.shape))))
@@ -299,8 +299,8 @@ class segDataset_val(torch.utils.data.Dataset):
 
     self.image = img_t[0].unsqueeze(0)
     self.mask = img_t[1].type(torch.int64)
-    return self.image, self.mask, ind, c  #for test central points
-    #return self.image, self.mask
+    #return self.image, self.mask, ind, c  #for test central points
+    return self.image, self.mask
   
   def __len__(self):
         return self.l
