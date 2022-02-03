@@ -229,7 +229,7 @@ def model_eval_full(f, m, device, size=512):
 
     return dx, dy, pred_mask_np, pred_mask_class_np, losses
 
-def metrics_plots(l, save=False):
+def metrics_plots(l, save=False, Title='Model 1'):
   plt.rcParams.update({
     "font.family": "sans-serif",
     "font.sans-serif": ["Helvetica"]})
@@ -250,6 +250,7 @@ def metrics_plots(l, save=False):
               'Validation Loss',
               'Validation global accuracy', 
               'Validation PerClass/Dice accuracy']) # using a named size
+  plt.title(Title)
   plt.show()
   if save == True:
     plt.savefig('Plot.pdf')

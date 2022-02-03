@@ -237,3 +237,71 @@ class segDataset(torch.utils.data.Dataset):
   
   def __len__(self):
         return self.l
+
+class segDataset_val(torch.utils.data.Dataset):
+  def __init__(self, root, l=1000, s=128):
+    super(segDataset_val, self).__init__()
+    self.root = root
+    self.size = s
+    self.l = l
+    self.classes = {'Intergranular lane' : 0,
+                    'Normal-shape granules': 1,
+                    'Granules with dots' : 2,
+                    'Granules with lanes' : 3,
+                    'Complex-shape granules' : 4}
+
+    self.bin_classes = ['Intergranular lane', 'Normal-shape granules', 'Granules with dots', 'Granules with lanes',
+                        'Complex-shape granules']
+
+    self.transform_serie = Secuential_trasn([Ttorch.ToTensor(),
+                                            SRS_crop(self.size),
+                                            Ttorch.RandomHorizontalFlip(p=0.5),
+                                            Ttorch.RandomVerticalFlip(p=0.5)
+                                            ])
+    
+    self.file_list = sorted(glob(self.root+'*.npz'))
+
+    print("Reading images...")
+    self.smap = []
+    self.mask_smap = []
+    self.weight_maps = []
+    self.index_list = []
+    for f in self.file_list:
+      file = np.load(f)
+      psmap = file['smap'].astype(np.float32)
+      pmsmap = file['cmask_map'].astype(np.float32)
+
+      self.smap.append(psmap)
+      self.mask_smap.append(pmsmap)
+
+      weight_maps = np.zeros_like(pmsmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)]).astype(np.float32)
+      weight_maps[pmsmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 0] = 1
+      weight_maps[pmsmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 4] = 1
+      weight_maps[pmsmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 1] = 10
+      weight_maps[pmsmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 2] = 10
+      weight_maps[pmsmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 3] = 10
+
+      self.weight_maps.append(softmax(weight_maps.flatten()))
+      self.index_list.append(np.array(list(np.ndindex(weight_maps.shape))))
+
+    print("Done!")
+        
+  def __getitem__(self, idx):
+    
+    ind = np.random.randint(low=0, high=len(self.smap))
+    smap = self.smap[ind]
+    mask_smap = self.mask_smap[ind]
+
+    #Full probability maps calculation
+    weight_map = self.weight_maps[ind]
+    index_l = self.index_list[ind]
+    img_t, c = self.transform_serie(np.array([smap, mask_smap]).transpose(), weight_map, index_l)
+
+    self.image = img_t[0].unsqueeze(0)
+    self.mask = img_t[1].type(torch.int64)
+    return self.image, self.mask, ind, c  #for test central points
+    #return self.image, self.mask
+  
+  def __len__(self):
+        return self.l
+
