@@ -183,6 +183,7 @@ class segDataset(torch.utils.data.Dataset):
       file = np.load(f)
       psmap = file['smap'].astype(np.float32)
       pmsmap = file['cmask_map'].astype(np.float32)
+      psmap = psmap/psmap.max()
 
       pad_value = int(((np.sqrt(2*(psmap.shape[0]**2))-psmap.shape[0]))/2)
 
@@ -270,6 +271,7 @@ class segDataset_val(torch.utils.data.Dataset):
       file = np.load(f)
       psmap = file['smap'].astype(np.float32)
       pmsmap = file['cmask_map'].astype(np.float32)
+      psmap = psmap/psmap.max()
 
       self.smap.append(psmap)
       self.mask_smap.append(pmsmap)
