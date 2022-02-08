@@ -186,6 +186,7 @@ def model_eval_full(f, m, device, size=512):
     file = np.load(f)
     map_f = file['smap'].astype(np.float32)
     mask_map_f = file['cmask_map'].astype(np.float32)
+    map_f = map_f/map_f.max()
 
     map_f_s = len(map_f) 
     dx=[]
@@ -270,7 +271,7 @@ def comparative_maps(raw_map, gt_mask, p_mask, bin_classes, save=False):
 
     patches = [mpatches.Patch(color=colors[i], 
     label="Class: {l}".format(l=bin_classes[i])) for i in range(len(bin_classes))]
-    lgd = plt.legend(handles=patches, bbox_to_anchor=(-0.7, -0.35), loc=8, borderaxespad=0. , ncol=3)
+    lgd = plt.legend(handles=patches, bbox_to_anchor=(-0.7, -0.25), loc=8, borderaxespad=0. , ncol=3)
     corres=np.round(np.count_nonzero(gt_mask == p_mask)*100/(768*768), 2)
     ax[0].set_title('Original map')
     ax[1].set_title('Ground-Truth map')
@@ -329,7 +330,6 @@ def probability_maps(raw_map, prob_maps, bin_classes, save=True):
     if save == True:
         fig.savefig('Pmaps.pdf', bbox_inches='tight')
 
-
 def test_centers(mask, cx, cy):
     bin_classes = ['Intergranular lane', 'Granules with dots', 'Granules with lanes',
                    'Complex-shape granules','Normal-shape granules']
@@ -371,7 +371,9 @@ def test_Imax(save_file, m, bin_classes, s=512, frame_num=4, save=True):
     for ind in random_ind:
         fs.select_map(ind)
         map_f = fs.smap
+        map_f = map_f/map_f.max()
         map_f_s = len(map_f) 
+
         dx=[]
         if map_f_s > size:
             x1 = int(abs(map_f_s/2) - (s/2))
@@ -396,7 +398,7 @@ def test_Imax(save_file, m, bin_classes, s=512, frame_num=4, save=True):
     "font.sans-serif": ["Helvetica"]})
     plt.rcParams.update({'font.size': 15})
     data= np.array(data)
-    values = np.unique(data.ravel())
+    values = np.unique(data[:,1,:,:].ravel())
 
     fig, ax = plt.subplots(nrows=2, ncols=frame_num, figsize=(20,9), sharex=True, sharey=True)
       
@@ -412,7 +414,7 @@ def test_Imax(save_file, m, bin_classes, s=512, frame_num=4, save=True):
 
     patches = [mpatches.Patch(color=colors[i], 
     label="Class: {l}".format(l=bin_classes[i])) for i in range(len(bin_classes))]
-    lgd = plt.legend(handles=patches, loc=8, bbox_to_anchor=(-2, -0.3, 0.5, 0.5), borderaxespad=0. , ncol=3)
+    lgd = plt.legend(handles=patches, loc=8, bbox_to_anchor=(-1.68, -0.3, 0.5, 0.5), borderaxespad=0. , ncol=3)
     
     if save == True:
         fig.savefig('ImaXplot.pdf', bbox_extra_artists=(lgd,), bbox_inches='tight')
