@@ -10,6 +10,7 @@ from scipy.special import softmax
 from scipy.ndimage import rotate
 import time
 import matplotlib.pyplot as plt
+from scipy.ndimage.filters import gaussian_filter
 import PIL
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -216,8 +217,11 @@ class segDataset(torch.utils.data.Dataset):
         weight_maps[p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 2] = 100
         weight_maps[p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 3] = 100
 
-        self.weight_maps.append(softmax(weight_maps.flatten()))
+        wm_blurred = gaussian_filter(weight_maps, sigma=14)
+
+        self.weight_maps.append(softmax(wm_blurred.flatten()))
         self.index_list.append(np.array(list(np.ndindex(weight_maps.shape))))
+
     print("Done!")
         
   def __getitem__(self, idx):
@@ -233,8 +237,8 @@ class segDataset(torch.utils.data.Dataset):
 
     self.image = img_t[0].unsqueeze(0)
     self.mask = img_t[1].type(torch.int64)
-    #return self.image, self.mask, ind, c  #for test central points
-    return self.image, self.mask
+    return self.image, self.mask, ind, c  #for test central points
+    #return self.image, self.mask
   
   def __len__(self):
         return self.l
