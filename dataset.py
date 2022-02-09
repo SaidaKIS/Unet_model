@@ -260,7 +260,7 @@ class segDataset(torch.utils.data.Dataset):
 
         p_map_mask_res = np.array([tmp3[i]*u_lables[i] for i in range(5)]).sum(axis=0)
 
-        self.smap.append(p_map1_res[0,0,:,:])
+        self.smap.append(p_map1_res[0,0,:,:].cpu().detach().numpy())
         self.mask_smap.append(p_map_mask_res[0,0,:,:])
 
         weight_maps = np.zeros_like(p_map_mask_res[0,0,int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)]).astype(np.float32)
