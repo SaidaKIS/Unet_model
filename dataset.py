@@ -12,6 +12,7 @@ import time
 import matplotlib.pyplot as plt
 from scipy.ndimage.filters import gaussian_filter
 import PIL
+import torch.nn.functional as F
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -39,6 +40,35 @@ def subimage(image, center, theta, width, height):
 
    image = image[y:y+height, x:x+width]
    return image
+
+def warp(x, flo):
+
+    B, C, H, W = x.size()
+    # mesh grid
+    xx = torch.arange(0, W).view(1 ,-1).repeat(H ,1)
+    yy = torch.arange(0, H).view(-1 ,1).repeat(1 ,W)
+    xx = xx.view(1 ,1 ,H ,W).repeat(B ,1 ,1 ,1)
+    yy = yy.view(1 ,1 ,H ,W).repeat(B ,1 ,1 ,1)
+    grid = torch.cat((xx ,yy) ,1).float()
+
+    if x.is_cuda:
+        grid = grid.cuda()
+    vgrid = grid + flo
+
+    # scale grid to [-1,1]
+    vgrid[: ,0 ,: ,:] = 2.0 *vgrid[: ,0 ,: ,:].clone() / max( W -1 ,1 ) -1.0
+    vgrid[: ,1 ,: ,:] = 2.0 *vgrid[: ,1 ,: ,:].clone() / max( H -1 ,1 ) -1.0
+
+    vgrid = vgrid.permute(0 ,2 ,3 ,1)
+    flo = flo.permute(0 ,2 ,3 ,1)
+    output = F.grid_sample(x, vgrid)
+    mask = torch.ones(x.size())#.cuda()
+    mask = F.grid_sample(mask, vgrid)
+
+    mask[mask <0.9999] = 0
+    mask[mask >0] = 1
+
+    return output*mask
 
 class RandomRotation_crop(torch.nn.Module):
   def __init__(self, degrees, size):
@@ -194,28 +224,51 @@ class segDataset(torch.utils.data.Dataset):
 
       self.rot_angle = np.arange(0,90,5)
       for a in self.rot_angle:
+        # Continumm image
         vis1 = PIL.Image.fromarray(pad_psmap)
-        #p_map1 = np.asarray(vis1.rotate(a))
         p_map1 = rotate(vis1,a)
         x01 = int(abs(p_map1.shape[0]/2) - (psmap.shape[0]/2))
         x02 = int(abs(p_map1.shape[0]/2) + (psmap.shape[0]/2))
         p_map1 = p_map1[x01:x02,x01:x02]
-
+        #Mask image
         vis2 = PIL.Image.fromarray(pad_pmsmap)
         p_map2 = np.asarray(vis2.rotate(a))
         x11 = int(abs(p_map2.shape[0]/2) - (pmsmap.shape[0]/2))
         x12 = int(abs(p_map2.shape[0]/2) + (pmsmap.shape[0]/2))
         p_map_mask = p_map2[x11:x12,x11:x12]
+        #Deformation parameter
+        nx, ny = p_map1.shape
+        flo = 100 * np.random.randn(2, nx, ny)
+        flo[0, :, :] = gaussian_filter(flo[0, :, :], sigma=10)
+        flo[1, :, :] = gaussian_filter(flo[1, :, :], sigma=10)
+        flo = torch.tensor(flo.astype('float32'))[None, :, :, :]
 
-        self.smap.append(p_map1)
-        self.mask_smap.append(p_map_mask)
+        #Deforming Continum image
+        tmp1 = p_map1[None, None, : , :]
+        tmp1 = torch.tensor(tmp1.astype('float32'))
+        p_map1_res = warp(tmp1, flo)
 
-        weight_maps = np.zeros_like(p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)]).astype(np.float32)
-        weight_maps[p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 0] = 1
-        weight_maps[p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 4] = 1
-        weight_maps[p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 1] = 100
-        weight_maps[p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 2] = 100
-        weight_maps[p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 3] = 100
+        #Deforming mask image
+        u_lables = np.unique(p_map_mask).astype(int)
+        tmp2 = np.array([(p_map_mask == c).astype(int) for c in u_lables])
+        tmp3=[]
+        for im in tmp2:
+          t_im = im[None, None, : , :]
+          t_im = torch.tensor(t_im.astype('float32'))
+          t_res = warp(t_im, flo)
+          tmp3.append(torch.round(t_res))
+
+        p_map_mask_res = np.array([tmp3[i]*u_lables[i] for i in range(5)]).sum(axis=0)
+
+        self.smap.append(p_map1_res[0,0,:,:])
+        self.mask_smap.append(p_map_mask_res[0,0,:,:])
+
+        weight_maps = np.zeros_like(p_map_mask_res[0,0,int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)]).astype(np.float32)
+        weight_maps[p_map_mask_res[0,0,int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 0.0] = 1
+        weight_maps[p_map_mask_res[0,0,int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 4.0] = 1
+        weight_maps[p_map_mask_res[0,0,int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 1.0] = 10
+        weight_maps[p_map_mask_res[0,0,int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 2.0] = 10
+        weight_maps[p_map_mask_res[0,0,int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 3.0] = 10
 
         wm_blurred = gaussian_filter(weight_maps, sigma=14)
 
@@ -287,8 +340,11 @@ class segDataset_val(torch.utils.data.Dataset):
       weight_maps[pmsmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 2] = 10
       weight_maps[pmsmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 3] = 10
 
-      self.weight_maps.append(softmax(weight_maps.flatten()))
+      wm_blurred = gaussian_filter(weight_maps, sigma=14)
+
+      self.weight_maps.append(softmax(wm_blurred.flatten()))
       self.index_list.append(np.array(list(np.ndindex(weight_maps.shape))))
+
 
     print("Done!")
         
