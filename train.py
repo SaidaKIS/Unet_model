@@ -12,7 +12,7 @@ from torchsummary import summary
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-def run(root, l, size_boxes, channels, N_EPOCHS, BACH_SIZE, loss_str, lr = 1e-3, 
+def run(root, l, size_boxes, channels, N_EPOCHS, BACH_SIZE, loss_str, scale=1, lr = 1e-3, 
         save_model=False, bilinear=False, model_summary=False, dropout=False):
 
     CE_weights = torch.Tensor([1.0,100.0,100.0,100.0,1.0]).to(device)
@@ -35,7 +35,7 @@ def run(root, l, size_boxes, channels, N_EPOCHS, BACH_SIZE, loss_str, lr = 1e-3,
     
     n_class = len(data_train.bin_classes)
     
-    model_unet = model.UNet(n_channels=channels, n_classes=n_class, bilinear=bilinear, dropout=dropout).to(device)
+    model_unet = model.UNet(n_channels=channels, n_classes=n_class, scale=scale, bilinear=bilinear, dropout=dropout).to(device)
     if model_summary == True:
         summary(model_unet, (channels, size_boxes, size_boxes))
     
@@ -142,6 +142,7 @@ def run(root, l, size_boxes, channels, N_EPOCHS, BACH_SIZE, loss_str, lr = 1e-3,
         dict['Loss'] = loss_str
         dict['bilinear'] = bilinear
         dict['Optimizer_lr'] = lr
+        dict['Scale'] = scale
         with open('model_params/Train_params_{}.npy'.format(dt), 'wb') as f:
             np.save(f, dict)
             np.save(f, save_losses)

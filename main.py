@@ -12,6 +12,7 @@ import io
 import pickle
 import pandas as pd
 from glob import glob
+from torchsummary import summary
 
 #change this in general 
 #/Users/smdiazcas/miniconda/envs/pyUnet/lib/python3.9/site-packages/torch/storage.py
@@ -33,10 +34,10 @@ if __name__ == '__main__':
 
     #Parameters
     root = 'data/Masks_S_v4/Train/' # Raw full IMaX maps (6 for training and 1 for validate)
-    l = 30000 # Submaps dataset size 
+    l = 15000 # Submaps dataset size 
     size_box = 128 # size of each submap
     channels = 1
-    N_EPOCHS = 100 
+    N_EPOCHS = 200 
     BACH_SIZE = 32  
     loss = 'IoU' # 'CrossEntropy', 'FocalLoss', 'mIoU'
     save_model = True
@@ -75,10 +76,14 @@ if __name__ == '__main__':
     utils.test_centers(mask, c[:,0], c[:,1])
 
     ##Train a model
-    #train.run(root, l, size_box, channels, N_EPOCHS, BACH_SIZE, loss, lr = lr, 
+    #train.run(root, l, size_box, channels, N_EPOCHS, BACH_SIZE, loss, lr = lr, scale=8,
     #    save_model=True, bilinear=False, model_summary=False, dropout=dropout)
 
     #Test model
+    #Initial summary
+    #model_unet = model.UNet(n_channels=1, n_classes=5, scale=8, bilinear=bilinear, dropout=dropout).to(device)
+    #summary(model_unet, (channels, 128, 128))
+
     # Generate a prediction 
     #model_test1 = torch.load('../New_results/NewGT_Jan2022/Augmentation/unet_epoch_13_0.50860_IoU_non_Dropout_valaug.pt', map_location=torch.device(device))
     #file = 'data/Masks_S_v3/Train/Mask_data_Frame_0.npz'
