@@ -34,11 +34,11 @@ if __name__ == '__main__':
 
     #Parameters
     root = 'data/Masks_S_v5/' # Raw full IMaX maps (6 for training and 1 for validate)
-    l = 10000 # Submaps dataset size 
+    l = 30000 # Submaps dataset size 
     size_box = 128 # size of each submap
     channels = 1
     N_EPOCHS = 200 
-    BACH_SIZE = 32  
+    BACH_SIZE = 64  
     loss = 'mIoU' # 'CrossEntropy', 'FocalLoss', 'mIoU'
     save_model = True
     bilinear = False # Unet upsampling mechanisim is Traspose convolution
@@ -98,14 +98,14 @@ if __name__ == '__main__':
     #utils.test_Imax(imax_save, model_test1, bin_classes)
    
     #Training information
-    #with open ('../New_results/NewGT_Jan2022/Augmentation/Train_params_2022-02-07_20_04_54_FocalLoss-g10.npy', 'rb') as f:
+    #with open ('../New_results/NewGT_Jan2022/Augmentation/Train_params_2022_02_08_13_09_09_FocalLoss_g10_nonDp_v2.npy', 'rb') as f:
     #    training_info = np.load(f, allow_pickle=True)
     #    metrics = np.load(f, allow_pickle=True)
     #    h_train_metrics = np.load(f, allow_pickle=True)
     #    h_val_metrics = np.load(f, allow_pickle=True)
 ####
     #print(training_info)
-    #utils.metrics_plots(metrics, Title='Model: Loss Focal Loss SRS non-Dropout')
+    #utils.metrics_plots(metrics, Title='Model: Focal Loss SRS Non-Dropout')
 ##
     #h_lt=[]
     #h_lv=[]
