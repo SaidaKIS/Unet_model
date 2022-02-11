@@ -76,7 +76,7 @@ if __name__ == '__main__':
     #utils.test_centers(mask, c[:,0], c[:,1])
 
     ##Train a model
-    train.run(root, l, size_box, channels, N_EPOCHS, BACH_SIZE, loss, lr = lr, scale=8,
+    train.run(root, l, size_box, channels, N_EPOCHS, BACH_SIZE, loss, lr = lr, scale=1,
         save_model=True, bilinear=False, model_summary=False, dropout=dropout)
 
     #Test model
