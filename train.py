@@ -129,6 +129,10 @@ def run(root, l, size_boxes, channels, N_EPOCHS, BACH_SIZE, loss_str, scale=1, l
             lr_scheduler.step()
             print(f"lowering learning rate to {optimizer.param_groups[0]['lr']}")
             scheduler_counter = 0
+        
+        if epoch == 199:
+            print("Final Model")
+            torch.save(model_unet.state_dict(), 'model_params/unet_epoch_{}_{:.5f}.pt'.format(epoch,np.mean(val_loss_list)))
     
     if save_model == True:
         dt = datetime.now()
