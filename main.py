@@ -85,27 +85,27 @@ if __name__ == '__main__':
     #summary(model_unet, (channels, 128, 128))
 
     # Generate a prediction 
-    #model_test1 = torch.load('../New_results/NewGT_Jan2022/Augmentation/unet_epoch_13_0.50860_IoU_non_Dropout_valaug.pt', map_location=torch.device(device))
+    #model_test1 = torch.load('../New_results/NewGT_Jan2022/Augmentation/unet_epoch_199_13.23084_FL_nonDp_g10.pt', map_location=torch.device(device))
     #file = 'data/Masks_S_v3/Train/Mask_data_Frame_0.npz'
 #
     ##smap_f0, cmask_map_f0, total, total0, ls=utils.model_eval(file, model_test1, device, size_box)
     #smap_f0, cmask_map_f0, total, total0, ls=utils.model_eval_full(file, model_test1, device)
     #print(ls)
 ##
-    ##utils.probability_maps(smap_f0[0], total[0], bin_classes)
+    #utils.probability_maps(smap_f0[0], total[0], bin_classes)
     #utils.comparative_maps(smap_f0[0], cmask_map_f0[0], total0[0], bin_classes, save=True) 
     #imax_save = '/Users/smdiazcas/Documents/Phd/Research/NN_granulation/contmaps.sav'
     #utils.test_Imax(imax_save, model_test1, bin_classes)
    
     #Training information
-    #with open ('../New_results/NewGT_Jan2022/Augmentation/Train_params_2022_02_08_13_09_09_FocalLoss_g10_nonDp_v2.npy', 'rb') as f:
+    #with open ('../New_results/NewGT_Jan2022/Augmentation/Train_params_2022_02_11_06_55_08_ScaleModel_FocalLoss_g10_nonDp_highaug_fullDS.npy', 'rb') as f:
     #    training_info = np.load(f, allow_pickle=True)
     #    metrics = np.load(f, allow_pickle=True)
     #    h_train_metrics = np.load(f, allow_pickle=True)
     #    h_val_metrics = np.load(f, allow_pickle=True)
 ####
     #print(training_info)
-    #utils.metrics_plots(metrics, Title='Model: Focal Loss SRS Non-Dropout')
+    #utils.metrics_plots(metrics, Title='Model: FocalLoss SRS Non-Dropout HighAug FullDS')
 ##
     #h_lt=[]
     #h_lv=[]

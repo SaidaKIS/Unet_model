@@ -15,14 +15,14 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 def run(root, l, size_boxes, channels, N_EPOCHS, BACH_SIZE, loss_str, scale=1, lr = 1e-3, 
         save_model=False, bilinear=False, model_summary=False, dropout=False):
 
-    CE_weights = torch.Tensor([1.0,100.0,100.0,100.0,1.0]).to(device)
+    CE_weights = torch.Tensor([1.0,10.0,10.0,10.0,1.0]).to(device)
 
     if loss_str == 'CrossEntropy':
         criterion = nn.CrossEntropyLoss(weight=CE_weights).to(device)
     if loss_str == 'FocalLoss':
         criterion = losses.FocalLoss(gamma=10, alpha=CE_weights).to(device)
     if loss_str == 'mIoU':
-        criterion = losses.mIoULoss(n_classes=5).to(device)
+        criterion = losses.mIoULoss(n_classes=5, weight=CE_weights).to(device)
 
     test_num = int(0.05 * l)
     print("Training set")

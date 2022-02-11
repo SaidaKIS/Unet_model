@@ -36,9 +36,10 @@ class FocalLoss(nn.Module):
 
 
 class mIoULoss(nn.Module):
-    def __init__(self, weight=None, size_average=True, n_classes=2):
+    def __init__(self, weight = None, size_average=True, n_classes=2):
         super(mIoULoss, self).__init__()
         self.classes = n_classes
+        self.w = weight
 
     def to_one_hot(self, tensor):
         n,h,w = tensor.size()
@@ -66,6 +67,9 @@ class mIoULoss(nn.Module):
         union = union.view(N,self.classes,-1).sum(2)
 
         loss = inter/union
+
+        if self.w != None:
+            loss = torch.sum(loss * self.w, 1)/torch.sum(self.w)
 
         ## Return average loss over classes and batch
         return 1-loss.mean()
