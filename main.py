@@ -38,7 +38,7 @@ if __name__ == '__main__':
     size_box = 128 # size of each submap
     channels = 1
     N_EPOCHS = 200 
-    BACH_SIZE = 64  
+    BACH_SIZE = 62  
     loss = 'mIoU' # 'CrossEntropy', 'FocalLoss', 'mIoU'
     save_model = True
     bilinear = False # Unet upsampling mechanisim is Traspose convolution
