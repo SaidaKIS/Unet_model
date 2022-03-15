@@ -187,12 +187,12 @@ class segDataset(torch.utils.data.Dataset):
     self.size = s
     self.l = l
     self.classes = {'Intergranular lane' : 0,
-                    'Normal-shape granules': 1,
+                    'Uniform-shape granules': 1,
                     'Granules with dots' : 2,
-                    'Granules with lanes' : 3,
+                    'Granules with a lane' : 3,
                     'Complex-shape granules' : 4}
 
-    self.bin_classes = ['Intergranular lane', 'Normal-shape granules', 'Granules with dots', 'Granules with lanes',
+    self.bin_classes = ['Intergranular lane', 'Uniform-shape granules', 'Granules with dots', 'Granules with a lane',
                         'Complex-shape granules']
 
     self.transform_serie = Secuential_trasn([Ttorch.ToTensor(),

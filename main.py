@@ -29,8 +29,8 @@ if __name__ == '__main__':
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(device)
 
-    bin_classes = ['Intergranular lane', 'Uniform-shape granules', 'Granules with dots', 'Granules with lanes',
-                   'Complex-shape granules']
+    bin_classes = ['Intergranular lane', 'Uniform-shaped granules', 'Granules with dots', 'Granules with a lane',
+                   'Complex-shaped granules']
 
     #Parameters
     root = 'data/Masks_S_v5/' # Raw full IMaX maps (6 for training and 1 for validate)
@@ -38,7 +38,7 @@ if __name__ == '__main__':
     size_box = 128 # size of each submap
     channels = 1
     N_EPOCHS = 200 
-    BACH_SIZE = 62  
+    BACH_SIZE = 32  
     loss = 'mIoU' # 'CrossEntropy', 'FocalLoss', 'mIoU'
     save_model = True
     bilinear = False # Unet upsampling mechanisim is Traspose convolution
@@ -76,8 +76,8 @@ if __name__ == '__main__':
     #utils.test_centers(mask, c[:,0], c[:,1])
 
     ##Train a model
-    train.run(root, l, size_box, channels, N_EPOCHS, BACH_SIZE, loss, lr = lr, scale=1,
-        save_model=True, bilinear=False, model_summary=False, dropout=dropout)
+    #train.run(root, l, size_box, channels, N_EPOCHS, BACH_SIZE, loss, lr = lr, scale=1,
+    #    save_model=True, bilinear=False, model_summary=False, dropout=dropout)
 
     #Test model
     #Initial summary
@@ -85,27 +85,30 @@ if __name__ == '__main__':
     #summary(model_unet, (channels, 128, 128))
 
     # Generate a prediction 
-    #model_test1 = torch.load('../New_results/NewGT_Jan2022/Augmentation/unet_epoch_199_13.23084_FL_nonDp_g10.pt', map_location=torch.device(device))
-    #file = 'data/Masks_S_v3/Train/Mask_data_Frame_0.npz'
-#
-    ##smap_f0, cmask_map_f0, total, total0, ls=utils.model_eval(file, model_test1, device, size_box)
-    #smap_f0, cmask_map_f0, total, total0, ls=utils.model_eval_full(file, model_test1, device)
-    #print(ls)
-##
-    #utils.probability_maps(smap_f0[0], total[0], bin_classes)
-    #utils.comparative_maps(smap_f0[0], cmask_map_f0[0], total0[0], bin_classes, save=True) 
+    model_test1 = torch.load('../New_results/NewGT_Jan2022/Augmentation/unet_epoch_12_0.52334_IoU_non_Dropout.pt', map_location=torch.device(device))
+    file = 'data/Masks_S_v3/Train/Mask_data_Frame_0.npz'
+    #model_test1 = torch.load('../New_results/NewGT_Jan2022/Augmentation/unet_epoch_199_13.23084_FL_nonDp_g10.pt', map_location=torch.device(device))   
+
+    ###smap_f0, cmask_map_f0, total, total0, ls=utils.model_eval(file, model_test1, device, size_box)
+    smap_f0, cmask_map_f0, total, total0, ls=utils.model_eval_full(file, model_test1, device, size=768)
+    print(ls)
+###
+    utils.probability_maps(smap_f0[0], total[0], bin_classes)
+    utils.comparative_maps(smap_f0[0], cmask_map_f0[0], total0[0], bin_classes, save=True) 
     #imax_save = '/Users/smdiazcas/Documents/Phd/Research/NN_granulation/contmaps.sav'
     #utils.test_Imax(imax_save, model_test1, bin_classes)
    
     #Training information
-    #with open ('../New_results/NewGT_Jan2022/Augmentation/Train_params_2022_02_11_06_55_08_ScaleModel_FocalLoss_g10_nonDp_highaug_fullDS.npy', 'rb') as f:
+    #with open ('../New_results/NewGT_Jan2022/Augmentation/Train_params_2022_02_15_11_57_49_FL_fullModel_nonDp_highaug_lr6e-3.npy', 'rb') as f:
+    ##with open ('../New_results/NewGT_Jan2022/Augmentation/Train_params_2022-02-05_03_00_00_IoU_non_Dropout.npy', 'rb') as f:    
     #    training_info = np.load(f, allow_pickle=True)
     #    metrics = np.load(f, allow_pickle=True)
     #    h_train_metrics = np.load(f, allow_pickle=True)
     #    h_val_metrics = np.load(f, allow_pickle=True)
 ####
     #print(training_info)
-    #utils.metrics_plots(metrics, Title='Model: FocalLoss SRS Non-Dropout HighAug FullDS')
+    #utils.metrics_plots(metrics, Title='Test 5: Focal Loss $\gamma = 10$ lr - 0.006')
+    #utils.metrics_plots(metrics, Title='Test 2: Mean Intersection-over-Union (mIoU)')
 ##
     #h_lt=[]
     #h_lv=[]

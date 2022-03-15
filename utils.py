@@ -95,6 +95,28 @@ def dice_coefficient(hist):
     return avg_dice
 
 
+def Per_class_OPA(hist):
+    correct_per_class = torch.diag(hist)
+    total_per_class = hist.sum(dim=1)
+    per_class_acc = correct_per_class / (total_per_class + EPS)
+    return per_class_acc
+
+
+def Per_class_jaccard(hist):
+    A_inter_B = torch.diag(hist)
+    A = hist.sum(dim=1)
+    B = hist.sum(dim=0)
+    jaccard = A_inter_B / (A + B - A_inter_B + EPS)
+    return jaccard
+
+def Per_class_dice(hist):
+    A_inter_B = torch.diag(hist)
+    A = hist.sum(dim=1)
+    B = hist.sum(dim=0)
+    dice = (2 * A_inter_B) / (A + B + EPS)
+    return dice
+
+
 def eval_metrics_sem(true, pred, num_classes, device):
     """Computes various segmentation metrics on 2D feature maps.
     Args:
@@ -115,7 +137,10 @@ def eval_metrics_sem(true, pred, num_classes, device):
     avg_per_class_acc = per_class_pixel_accuracy(hist)
     avg_jacc = jaccard_index(hist)
     avg_dice = dice_coefficient(hist)
-    return overall_acc, avg_per_class_acc, avg_jacc, avg_dice
+    pc_opa = Per_class_OPA(hist)
+    pc_j = Per_class_jaccard(hist)
+    pc_d = Per_class_dice(hist)
+    return overall_acc, avg_per_class_acc, avg_jacc, avg_dice, pc_opa, pc_j, pc_d
 
 def blockshaped(arr, nrows, ncols):
     """
@@ -153,7 +178,7 @@ def model_eval(f, m, device, size):
     pred_mask_class = torch.argmax(pred_mask, axis=1)
     pred_mask_class_np=pred_mask_class.cpu().detach().numpy()
 
-    val_overall_pa, val_per_class_pa, val_jaccard_index, val_dice_index = eval_metrics_sem(y.to(device), pred_mask_class.to(device), 5, device)
+    val_overall_pa, val_per_class_pa, val_jaccard_index, val_dice_index, val_pc_opa, val_pc_j, val_pc_d = eval_metrics_sem(y.to(device), pred_mask_class.to(device), 5, device)
     a = acc(y,pred_mask).numpy()
 
     prop_perclass = []
@@ -178,7 +203,7 @@ def model_eval(f, m, device, size):
     else:
         raise AttributeError('Full map can not be divided')
 
-    losses = [a, val_overall_pa, val_per_class_pa, val_jaccard_index, val_dice_index]
+    losses = [a, val_overall_pa, val_per_class_pa, val_jaccard_index, val_dice_index, val_pc_opa, val_pc_j, val_pc_d]
 
     return map_f, mask_map_f, np.array(pred_total_class_mask), np.array(prop_perclass), losses
     
@@ -191,7 +216,7 @@ def model_eval_full(f, m, device, size=512):
     map_f_s = len(map_f) 
     dx=[]
     dy=[]
-    if map_f_s > size:
+    if map_f_s >= size:
         dx.append(map_f[:size,:size])
         dx.append(map_f[-size:,:size])
         dx.append(map_f[:size,-size:])
@@ -223,35 +248,40 @@ def model_eval_full(f, m, device, size=512):
     pred_mask_class = torch.argmax(pred_mask, axis=1)
     pred_mask_class_np=pred_mask_class.cpu().detach().numpy()
 
-    val_overall_pa, val_per_class_pa, val_jaccard_index, val_dice_index = eval_metrics_sem(y.to(device), pred_mask_class.to(device), 5, device)
+    val_overall_pa, val_per_class_pa, val_jaccard_index, val_dice_index, val_pc_opa, val_pc_j, val_pc_d = eval_metrics_sem(y.to(device), pred_mask_class.to(device), 5, device)
     a = acc(y,pred_mask).numpy()
 
-    losses = [a, val_overall_pa, val_per_class_pa, val_jaccard_index, val_dice_index]
-
+    losses = [a, val_overall_pa, val_per_class_pa, val_jaccard_index, val_dice_index, val_pc_opa, val_pc_j, val_pc_d]
+    
     return dx, dy, pred_mask_np, pred_mask_class_np, losses
 
 def metrics_plots(l, save=False, Title='Model 1'):
   plt.rcParams.update({
     "font.family": "sans-serif",
     "font.sans-serif": ["Helvetica"]})
-  plt.rcParams.update({'font.size': 18})
-  
+  plt.rcParams.update({'font.size': 28})
+
   plot_losses = np.array(l)
   plt.figure(figsize=(12,8))
   plt.plot(plot_losses[:,0], plot_losses[:,1], '--b')
   plt.plot(plot_losses[:,0], plot_losses[:,2], '.-b')
   plt.plot(plot_losses[:,0], plot_losses[:,3], '--r')
   plt.plot(plot_losses[:,0], plot_losses[:,5], '.-r')
-  plt.plot(plot_losses[:,0], plot_losses[:,8], color='g')
-  plt.xlabel('Epochs',fontsize=20)
-  plt.ylabel('Loss/accuracy',fontsize=20)
+  plt.plot(plot_losses[:,0], plot_losses[:,6], color='tab:green')
+  plt.plot(plot_losses[:,0], plot_losses[:,7], color='tab:orange')
+  plt.xlabel('Epochs')
+  plt.ylabel('Loss/accuracy')
+  plt.ylim(0.0, 1.0)
+  plt.xlim(0.0, 200.0)
   plt.grid()
   plt.legend(['Training Loss', 
-              'Training accuracy', 
+              'Training Overall pixel accuracy', 
               'Validation Loss',
-              'Validation global accuracy', 
-              'Validation PerClass/Dice accuracy']) # using a named size
+              'Validation Overall pixel accuracy', 
+              'Validation PerClass accuracy',
+              'Validation Jaccard index'], fontsize=20) # using a named size
   plt.title(Title)
+  plt.tight_layout()
   plt.show()
   if save == True:
     plt.savefig('Plot.pdf')
@@ -260,7 +290,7 @@ def comparative_maps(raw_map, gt_mask, p_mask, bin_classes, save=False):
     plt.rcParams.update({
     "font.family": "sans-serif",
     "font.sans-serif": ["Helvetica"]})
-    plt.rcParams.update({'font.size': 18})
+    plt.rcParams.update({'font.size': 20})
 
     fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(18,7), sharex=True, sharey=True)
     im1=ax[0].imshow(raw_map, origin='lower', cmap='gray')
@@ -270,12 +300,12 @@ def comparative_maps(raw_map, gt_mask, p_mask, bin_classes, save=False):
     colors = [im2.cmap(im2.norm(value)) for value in values]
 
     patches = [mpatches.Patch(color=colors[i], 
-    label="Class: {l}".format(l=bin_classes[i])) for i in range(len(bin_classes))]
-    lgd = plt.legend(handles=patches, bbox_to_anchor=(-0.7, -0.25), loc=8, borderaxespad=0. , ncol=3)
+    label="{l}".format(l=bin_classes[i])) for i in range(len(bin_classes))]
+    lgd = plt.legend(handles=patches, bbox_to_anchor=(2.1, 0.75), loc=1, borderaxespad=0. , ncol=1)
     corres=np.round(np.count_nonzero(gt_mask == p_mask)*100/(768*768), 2)
     ax[0].set_title('Original map')
-    ax[1].set_title('Ground-Truth map')
-    ax[2].set_title('Model Predicted map')
+    ax[1].set_title('Ground-truth map')
+    ax[2].set_title('Predicted map')
     ax[0].set_xticks([])
     ax[0].set_yticks([])
     if save == True:
@@ -288,44 +318,39 @@ def probability_maps(raw_map, prob_maps, bin_classes, save=True):
     plt.rcParams.update({'font.size': 18})
     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-    fig, ax = plt.subplots(nrows=2, ncols=3, figsize=(18,10), sharex=True, sharey=True)
-    im1=ax[0][0].imshow(raw_map, origin='lower', cmap='gray')
-    ax[0][0].set_title('Original map')
-    divider = make_axes_locatable(ax[0][0])
-    cax1 = divider.append_axes('right', size='5%', pad=0.05)
-    fig.colorbar(im1, cax=cax1, orientation='vertical')
+    fig, ax = plt.subplots(nrows=1, ncols=5, figsize=(30,10), sharex=True, sharey=True)
 
-    im2=ax[0][1].imshow(expit(prob_maps[0]), origin='lower')
-    ax[0][1].set_title(bin_classes[0])
-    divider = make_axes_locatable(ax[0][1])
+    im2=ax[0].imshow(expit(prob_maps[0]), origin='lower', vmin=0.0, vmax=1.0)
+    ax[0].set_title(bin_classes[0])
+    divider = make_axes_locatable(ax[0])
     cax2 = divider.append_axes('right', size='5%', pad=0.05)
     fig.colorbar(im2, cax=cax2, orientation='vertical')
 
-    im3=ax[0][2].imshow(expit(prob_maps[1]), origin='lower')
-    ax[0][2].set_title(bin_classes[1])
-    divider = make_axes_locatable(ax[0][2])
+    im3=ax[1].imshow(expit(prob_maps[1]), origin='lower', vmin=0.0, vmax=1.0)
+    ax[1].set_title(bin_classes[1])
+    divider = make_axes_locatable(ax[1])
     cax3 = divider.append_axes('right', size='5%', pad=0.05)
     fig.colorbar(im3, cax=cax3, orientation='vertical')
     
-    im4=ax[1][0].imshow(expit(prob_maps[2]), origin='lower')
-    ax[1][0].set_title(bin_classes[2])
-    divider = make_axes_locatable(ax[1][0])
+    im4=ax[2].imshow(expit(prob_maps[2]), origin='lower', vmin=0.0, vmax=1.0)
+    ax[2].set_title(bin_classes[2])
+    divider = make_axes_locatable(ax[2])
     cax4 = divider.append_axes('right', size='5%', pad=0.05)
     fig.colorbar(im4, cax=cax4, orientation='vertical')
     
-    im5=ax[1][1].imshow(expit(prob_maps[3]), origin='lower')
-    ax[1][1].set_title(bin_classes[3])
-    divider = make_axes_locatable(ax[1][1])
+    im5=ax[3].imshow(expit(prob_maps[3]), origin='lower', vmin=0.0, vmax=1.0)
+    ax[3].set_title(bin_classes[3])
+    divider = make_axes_locatable(ax[3])
     cax5 = divider.append_axes('right', size='5%', pad=0.05)
     fig.colorbar(im5, cax=cax5, orientation='vertical')
     
-    im6=ax[1][2].imshow(expit(prob_maps[4]), origin='lower')
-    ax[1][2].set_title(bin_classes[4])
-    divider = make_axes_locatable(ax[1][2])
+    im6=ax[4].imshow(expit(prob_maps[4]), origin='lower', vmin=0.0, vmax=1.0)
+    ax[4].set_title(bin_classes[4])
+    divider = make_axes_locatable(ax[4])
     cax6 = divider.append_axes('right', size='5%', pad=0.05)
     fig.colorbar(im6, cax=cax6, orientation='vertical')
-    ax[0][0].set_xticks([])
-    ax[0][0].set_yticks([])
+    ax[0].set_xticks([])
+    ax[0].set_yticks([])
 
     if save == True:
         fig.savefig('Pmaps.pdf', bbox_inches='tight')
