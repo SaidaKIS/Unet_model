@@ -12,7 +12,6 @@ import io
 import pickle
 import pandas as pd
 from glob import glob
-from torchsummary import summary
 
 #change this in general 
 #/Users/smdiazcas/miniconda/envs/pyUnet/lib/python3.9/site-packages/torch/storage.py
@@ -33,18 +32,29 @@ if __name__ == '__main__':
                    'Complex-shaped granules']
 
     #Parameters
-    root = 'data/Masks_S_v5/' # Raw full IMaX maps (6 for training and 1 for validate)
-    l = 30000 # Submaps dataset size 
+    root = 'data/Masks_channels_test/' # Raw full IMaX maps (6 for training and 1 for validate)
+    l = 100 # Submaps dataset size 
     size_box = 128 # size of each submap
-    channels = 1
-    N_EPOCHS = 200 
-    BACH_SIZE = 32  
+    channels = 5
+    N_EPOCHS = 5 
+    BACH_SIZE = 8  
     loss = 'mIoU' # 'CrossEntropy', 'FocalLoss', 'mIoU'
     save_model = True
-    bilinear = False # Unet upsampling mechanisim is Traspose convolution
+    bilinear = True # Unet upsampling mechanisim is Traspose convolution
     model_summary = False
-    lr = 1e-3
+    lr = 3e-4
     dropout = False
+
+    #data=dataset.segDataset(root+'Train/', l=10, s=size_box)
+    #imgs, mask = data[0]
+    #print(imgs.shape)
+    #print(mask.shape)
+####
+    #fig, ax = plt.subplots(nrows=1, ncols=6, sharex=True, sharey=True)
+    #for i in range(5):
+    #    ax[i].imshow(imgs[0,i,:,:], origin='lower', cmap='gray')
+    #    ax[-1].imshow(mask, origin='lower')
+    #plt.show()
 
     #prop=pd.DataFrame(columns=[0, 1, 2, 3, 4], index=np.arange(0,2000))
     #data=dataset.segDataset(root,l=2000, s=size_box)
@@ -76,8 +86,8 @@ if __name__ == '__main__':
     #utils.test_centers(mask, c[:,0], c[:,1])
 
     ##Train a model
-    #train.run(root, l, size_box, channels, N_EPOCHS, BACH_SIZE, loss, lr = lr, scale=1,
-    #    save_model=True, bilinear=False, model_summary=False, dropout=dropout)
+    train.run(root, l, size_box, channels, N_EPOCHS, BACH_SIZE, loss, lr = lr, scale=1,
+        save_model=True, bilinear=True, model_summary=False, dropout=dropout)
 
     #Test model
     #Initial summary
@@ -85,26 +95,28 @@ if __name__ == '__main__':
     #summary(model_unet, (channels, 128, 128))
 
     # Generate a prediction 
-    model_test1 = torch.load('../New_results/NewGT_Jan2022/Augmentation/unet_epoch_12_0.52334_IoU_non_Dropout.pt', map_location=torch.device(device))
-    file = 'data/Masks_S_v3/Train/Mask_data_Frame_0.npz'
+    #model_test1 = torch.load('../New_results/NewGT_Jan2022/Augmentation/unet_epoch_12_0.52334_IoU_non_Dropout.pt', map_location=torch.device(device))
+    #file = 'data/Masks_S_v3/Train/Mask_data_Frame_0.npz'
     #model_test1 = torch.load('../New_results/NewGT_Jan2022/Augmentation/unet_epoch_199_13.23084_FL_nonDp_g10.pt', map_location=torch.device(device))   
 
     ###smap_f0, cmask_map_f0, total, total0, ls=utils.model_eval(file, model_test1, device, size_box)
-    smap_f0, cmask_map_f0, total, total0, ls=utils.model_eval_full(file, model_test1, device, size=768)
-    print(ls)
+    #smap_f0, cmask_map_f0, total, total0, ls=utils.model_eval_full(file, model_test1, device, size=768)
+    #print(ls)
 ###
-    utils.probability_maps(smap_f0[0], total[0], bin_classes)
-    utils.comparative_maps(smap_f0[0], cmask_map_f0[0], total0[0], bin_classes, save=True) 
+    #utils.probability_maps(smap_f0[0], total[0], bin_classes)
+    #utils.comparative_maps(smap_f0[0], cmask_map_f0[0], total0[0], bin_classes, save=True) 
     #imax_save = '/Users/smdiazcas/Documents/Phd/Research/NN_granulation/contmaps.sav'
     #utils.test_Imax(imax_save, model_test1, bin_classes)
    
     #Training information
-    #with open ('../New_results/NewGT_Jan2022/Augmentation/Train_params_2022_02_15_11_57_49_FL_fullModel_nonDp_highaug_lr6e-3.npy', 'rb') as f:
-    ##with open ('../New_results/NewGT_Jan2022/Augmentation/Train_params_2022-02-05_03_00_00_IoU_non_Dropout.npy', 'rb') as f:    
+    #with open ('../New_results/NewGT_Jan2022/Augmentation/Train_params_2022_02_08_13_09_09_FocalLoss_g10_nonDp_v2.npy', 'rb') as f:
+    ###with open ('../New_results/NewGT_Jan2022/Augmentation/Train_params_2022-02-05_03_00_00_IoU_non_Dropout.npy', 'rb') as f:    
     #    training_info = np.load(f, allow_pickle=True)
     #    metrics = np.load(f, allow_pickle=True)
     #    h_train_metrics = np.load(f, allow_pickle=True)
     #    h_val_metrics = np.load(f, allow_pickle=True)
+    #
+    #print(training_info)
 ####
     #print(training_info)
     #utils.metrics_plots(metrics, Title='Test 5: Focal Loss $\gamma = 10$ lr - 0.006')

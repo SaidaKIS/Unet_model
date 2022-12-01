@@ -157,10 +157,11 @@ class SRS_crop(torch.nn.Module):
       x = int(c[0] - self.size/2)
       y = int(c[1] - self.size/2)
 
-      cr_image_0 = img_raw[0,y:y+self.size, x:x+self.size] # raw image
-      cr_image_1 = img_raw[1,y:y+self.size, x:x+self.size] # raw mask
+      res_array = []
+      for img in img_raw:
+        res_array.append(img[y:y+self.size, x:x+self.size]) # complete sequence + mask
 
-      return torch.Tensor(np.array([cr_image_0,cr_image_1]), device='cpu'), c
+      return torch.Tensor(np.array(res_array), device='cpu'), c
 
 class Secuential_trasn(torch.nn.Module):
     """Generates a secuential transformation"""
@@ -180,12 +181,13 @@ class Secuential_trasn(torch.nn.Module):
       return t_list[-1], c
 
 class segDataset(torch.utils.data.Dataset):
-  def __init__(self, root, l=1000, s=128):
+  def __init__(self, root, l=1000, s=128, seq_len=5):
     super(segDataset, self).__init__()
     start = time.time()
     self.root = root
     self.size = s
     self.l = l
+    self.seq_len = seq_len
     self.classes = {'Intergranular lane' : 0,
                     'Uniform-shape granules': 1,
                     'Granules with dots' : 2,
@@ -198,7 +200,7 @@ class segDataset(torch.utils.data.Dataset):
     self.transform_serie = Secuential_trasn([Ttorch.ToTensor(),
                                             SRS_crop(self.size),
                                             RotationTransform(angles=[0, 90, 180, 270]),
-                                            Ttorch.RandomPerspective(0.3,p=0.5, interpolation=Ttorch.InterpolationMode.NEAREST),
+                                            #Ttorch.RandomPerspective(0.3,p=0.5, interpolation=Ttorch.InterpolationMode.NEAREST),
                                             Ttorch.RandomHorizontalFlip(p=0.5),
                                             Ttorch.RandomVerticalFlip(p=0.5)
                                             ])
@@ -206,95 +208,93 @@ class segDataset(torch.utils.data.Dataset):
     self.file_list = sorted(glob(self.root+'*.npz'))
 
     print("Reading images...")
-    self.smap = []
+    self.ts_smap = []
     self.mask_smap = []
     self.weight_maps = []
     self.index_list = []
+
     for f in self.file_list:
       file = np.load(f)
-      psmap = file['smap'].astype(np.float32)
+      psmap = file['ts_smap'].astype(np.float32)
       pmsmap = file['cmask_map'].astype(np.float32)
       psmap = psmap/psmap.max()
 
       pad_value = int(((np.sqrt(2*(psmap.shape[0]**2))-psmap.shape[0]))/2)
 
       #Padding for rotation
-      pad_psmap = np.pad(psmap, ((pad_value,pad_value),(pad_value,pad_value)), mode='reflect')
+      pad_psmap = np.array([np.pad(psmap[i,:,:], ((pad_value,pad_value),(pad_value,pad_value)), mode='reflect') for i in range(self.seq_len)])
+      pad_pmsmap = np.pad(pmsmap, ((pad_value,pad_value),(pad_value,pad_value)), mode='reflect')
+
+      self.rot_angle = np.arange(0,90,5)
+      file = np.load(f)
+      psmap = file['ts_smap'].astype(np.float32)
+      pmsmap = file['cmask_map'].astype(np.float32)
+      psmap = psmap/psmap.max()
+
+      pad_value = int(((np.sqrt(2*(psmap.shape[-1]**2))-psmap.shape[-1]))/2)
+
+      #Padding for rotation
+      pad_psmap = np.array([np.pad(psmap[i,:,:], ((pad_value,pad_value),(pad_value,pad_value)), mode='reflect') for i in range(self.seq_len)])
       pad_pmsmap = np.pad(pmsmap, ((pad_value,pad_value),(pad_value,pad_value)), mode='reflect')
 
       self.rot_angle = np.arange(0,90,5)
       for a in self.rot_angle:
         # Continumm image
-        vis1 = PIL.Image.fromarray(pad_psmap)
-        p_map1 = rotate(vis1,a)
-        x01 = int(abs(p_map1.shape[0]/2) - (psmap.shape[0]/2))
-        x02 = int(abs(p_map1.shape[0]/2) + (psmap.shape[0]/2))
-        p_map1 = p_map1[x01:x02,x01:x02]
+        p_map1=[]
+        for s in range(self.seq_len):
+          pad_psmap_s = pad_psmap[s]
+          vis1 = PIL.Image.fromarray(pad_psmap_s)
+          p_map1_p = rotate(vis1,a)
+          x01 = int(abs(p_map1_p.shape[0]/2) - (psmap.shape[-1]/2))
+          x02 = int(abs(p_map1_p.shape[0]/2) + (psmap.shape[-1]/2))
+          p_map1.append(p_map1_p[x01:x02,x01:x02])
+        p_map1 = np.array(p_map1)
+
         #Mask image
         vis2 = PIL.Image.fromarray(pad_pmsmap)
         p_map2 = np.asarray(vis2.rotate(a))
         x11 = int(abs(p_map2.shape[0]/2) - (pmsmap.shape[0]/2))
         x12 = int(abs(p_map2.shape[0]/2) + (pmsmap.shape[0]/2))
         p_map_mask = p_map2[x11:x12,x11:x12]
-        #Deformation parameter
-        nx, ny = p_map1.shape
-        flo = 100 * np.random.randn(2, nx, ny)
-        flo[0, :, :] = gaussian_filter(flo[0, :, :], sigma=10)
-        flo[1, :, :] = gaussian_filter(flo[1, :, :], sigma=10)
-        flo = torch.tensor(flo.astype('float32'))[None, :, :, :]
 
-        #Deforming Continum image
-        tmp1 = p_map1[None, None, : , :]
-        tmp1 = torch.tensor(tmp1.astype('float32'))
-        p_map_res = warp(tmp1, flo)
+        self.ts_smap.append(p_map1)
+        self.mask_smap.append(p_map_mask)
 
-        #Deforming mask image
-        u_lables = np.unique(p_map_mask).astype(int)
-        tmp2 = np.array([(p_map_mask == c).astype(int) for c in u_lables])
-        tmp3=[]
-        for im in tmp2:
-          t_im = im[None, None, : , :]
-          t_im = torch.tensor(t_im.astype('float32'))
-          t_res = warp(t_im, flo)
-          tmp3.append(torch.round(t_res))
-
-        p_map_mask_res = np.array([tmp3[i]*u_lables[i] for i in range(5)]).sum(axis=0)
-
-        p_map_res = p_map_res.cpu().detach().numpy()
-        p_map_mask_res = p_map_mask_res.cpu().detach().numpy()
-
-        self.smap.append(p_map_res[0,0,:,:])
-        self.mask_smap.append(p_map_mask_res[0,0,:,:])
-
-        weight_maps = np.zeros_like(p_map_mask_res[0,0,int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)]).astype(np.float32)
-        weight_maps[p_map_mask_res[0,0,int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 0.0] = 1
-        weight_maps[p_map_mask_res[0,0,int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 4.0] = 1
-        weight_maps[p_map_mask_res[0,0,int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 1.0] = 10
-        weight_maps[p_map_mask_res[0,0,int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 2.0] = 10
-        weight_maps[p_map_mask_res[0,0,int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 3.0] = 10
+        weight_maps = np.zeros_like(p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)]).astype(np.float32)
+        weight_maps[p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 0.0] = 1
+        weight_maps[p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 4.0] = 1
+        weight_maps[p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 1.0] = 10
+        weight_maps[p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 2.0] = 10
+        weight_maps[p_map_mask[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)] == 3.0] = 10
 
         wm_blurred = gaussian_filter(weight_maps, sigma=14)
 
         self.weight_maps.append(softmax(wm_blurred.flatten()))
         self.index_list.append(np.array(list(np.ndindex(weight_maps.shape))))
-
+      
     print("Done!")
         
   def __getitem__(self, idx):
     
-    ind = np.random.randint(low=0, high=len(self.smap))
-    smap = self.smap[ind]
+    ind = np.random.randint(low=0, high=len(self.ts_smap))
+    ts_smap = self.ts_smap[ind]
     mask_smap = self.mask_smap[ind]
 
     #Full probability maps calculation
     weight_map = self.weight_maps[ind]
     index_l = self.index_list[ind]
-    img_t, c = self.transform_serie(np.array([smap, mask_smap]).transpose(), weight_map, index_l)
 
-    self.image = img_t[0].unsqueeze(0)
-    self.mask = img_t[1].type(torch.int64)
+    to_trans_map =[]
+    for i in ts_smap:
+      to_trans_map.append(i)
+    to_trans_map.append(mask_smap)
+
+    img_t, c = self.transform_serie(np.array(to_trans_map).transpose(), weight_map, index_l)
+
+    self.images = img_t[0:-1].unsqueeze(0)
+    self.mask = img_t[-1].type(torch.int64)
     #return self.image, self.mask, ind, c  #for test central points
-    return self.image, self.mask
+    return self.images, self.mask
   
   def __len__(self):
         return self.l
@@ -323,17 +323,17 @@ class segDataset_val(torch.utils.data.Dataset):
     self.file_list = sorted(glob(self.root+'*.npz'))
 
     print("Reading images...")
-    self.smap = []
+    self.ts_smap = []
     self.mask_smap = []
     self.weight_maps = []
     self.index_list = []
     for f in self.file_list:
       file = np.load(f)
-      psmap = file['smap'].astype(np.float32)
+      psmap = file['ts_smap'].astype(np.float32)
       pmsmap = file['cmask_map'].astype(np.float32)
       psmap = psmap/psmap.max()
 
-      self.smap.append(psmap)
+      self.ts_smap.append(psmap)
       self.mask_smap.append(pmsmap)
 
       weight_maps = np.zeros_like(pmsmap[int(self.size/2):-int(self.size/2), int(self.size/2):-int(self.size/2)]).astype(np.float32)
@@ -353,19 +353,28 @@ class segDataset_val(torch.utils.data.Dataset):
         
   def __getitem__(self, idx):
     
-    ind = np.random.randint(low=0, high=len(self.smap))
-    smap = self.smap[ind]
+    if len(self.ts_smap) > 3:
+      ind = np.random.randint(low=0, high=len(self.ts_smap))
+    else:
+      ind = 0
+    ts_smap = self.ts_smap[ind]
     mask_smap = self.mask_smap[ind]
 
     #Full probability maps calculation
     weight_map = self.weight_maps[ind]
     index_l = self.index_list[ind]
-    img_t, c = self.transform_serie(np.array([smap, mask_smap]).transpose(), weight_map, index_l)
 
-    self.image = img_t[0].unsqueeze(0)
-    self.mask = img_t[1].type(torch.int64)
+    to_trans_map =[]
+    for i in ts_smap:
+      to_trans_map.append(i)
+    to_trans_map.append(mask_smap)
+
+    img_t, c = self.transform_serie(np.array(to_trans_map).transpose(), weight_map, index_l)
+
+    self.images = img_t[0:-1].unsqueeze(0)
+    self.mask = img_t[-1].type(torch.int64)
     #return self.image, self.mask, ind, c  #for test central points
-    return self.image, self.mask
+    return self.images, self.mask
   
   def __len__(self):
         return self.l

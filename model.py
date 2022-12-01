@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from einops import rearrange
 
 # Unet model derived from https://github.com/milesial/Pytorch-UNet and 
 # https://github.com/amirhosseinh77/UNet-AerialSegmentation
@@ -100,7 +101,8 @@ class UNet(nn.Module):
         self.up4 = Up(128 // scale, 64 // scale, bilinear)
         self.outc = OutConv(64 // scale, n_classes)
 
-    def forward(self, x):
+    def forward(self, x0):
+        x = rearrange(x0,'B S C H W -> B (S C) H W')
         x1 = self.inc(x)
         x2 = self.down1(x1)
         x3 = self.down2(x2)
