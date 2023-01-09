@@ -215,7 +215,7 @@ class segDataset(torch.utils.data.Dataset):
 
     for f in self.file_list:
       file = np.load(f)
-      psmap = file['ts_smap'].astype(np.float32)
+      psmap = file['smap'].astype(np.float32)
       pmsmap = file['cmask_map'].astype(np.float32)
       psmap = psmap/psmap.max()
 
@@ -227,7 +227,7 @@ class segDataset(torch.utils.data.Dataset):
 
       self.rot_angle = np.arange(0,90,5)
       file = np.load(f)
-      psmap = file['ts_smap'].astype(np.float32)
+      psmap = file['smap'].astype(np.float32)
       pmsmap = file['cmask_map'].astype(np.float32)
       psmap = psmap/psmap.max()
 
@@ -329,7 +329,7 @@ class segDataset_val(torch.utils.data.Dataset):
     self.index_list = []
     for f in self.file_list:
       file = np.load(f)
-      psmap = file['ts_smap'].astype(np.float32)
+      psmap = file['smap'].astype(np.float32)
       pmsmap = file['cmask_map'].astype(np.float32)
       psmap = psmap/psmap.max()
 
