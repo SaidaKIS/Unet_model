@@ -32,18 +32,18 @@ if __name__ == '__main__':
                    'Complex-shaped granules']
 
     #Parameters
-    root = 'data/Masks_channels_test/' # Raw full IMaX maps (6 for training and 1 for validate)
-    l = 100 # Submaps dataset size 
+    root = 'data/Masks_S_v5/' # Raw full IMaX maps (6 for training and 1 for validate)
+    l = 10000 # Submaps dataset size 
     size_box = 128 # size of each submap
-    channels = 5
-    N_EPOCHS = 5 
-    BACH_SIZE = 8  
+    channels = 1
+    N_EPOCHS = 100
+    BACH_SIZE = 32  
     loss = 'mIoU' # 'CrossEntropy', 'FocalLoss', 'mIoU'
     save_model = True
     bilinear = True # Unet upsampling mechanisim is Traspose convolution
     model_summary = False
     lr = 3e-4
-    dropout = False
+    dropout = True
 
     #data=dataset.segDataset(root+'Train/', l=10, s=size_box)
     #imgs, mask = data[0]
@@ -109,7 +109,7 @@ if __name__ == '__main__':
     #utils.test_Imax(imax_save, model_test1, bin_classes)
    
     #Training information
-    #with open ('../New_results/NewGT_Jan2022/Augmentation/Train_params_2022_02_08_13_09_09_FocalLoss_g10_nonDp_v2.npy', 'rb') as f:
+    #with open ('../Unet_channel_test/Train_params_2022-12-02_04_7_45.npy', 'rb') as f:
     ###with open ('../New_results/NewGT_Jan2022/Augmentation/Train_params_2022-02-05_03_00_00_IoU_non_Dropout.npy', 'rb') as f:    
     #    training_info = np.load(f, allow_pickle=True)
     #    metrics = np.load(f, allow_pickle=True)
@@ -120,7 +120,7 @@ if __name__ == '__main__':
 ####
     #print(training_info)
     #utils.metrics_plots(metrics, Title='Test 5: Focal Loss $\gamma = 10$ lr - 0.006')
-    #utils.metrics_plots(metrics, Title='Test 2: Mean Intersection-over-Union (mIoU)')
+    #utils.metrics_plots(metrics, Title='Test 1: Mean Intersection-over-Union (mIoU)')
 ##
     #h_lt=[]
     #h_lv=[]

@@ -272,7 +272,7 @@ def metrics_plots(l, save=False, Title='Model 1'):
   plt.xlabel('Epochs')
   plt.ylabel('Loss/accuracy')
   plt.ylim(0.0, 1.0)
-  plt.xlim(0.0, 200.0)
+  plt.xlim(0.0, 100.0)
   plt.grid()
   plt.legend(['Training Loss', 
               'Training Overall pixel accuracy', 
